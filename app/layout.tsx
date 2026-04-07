@@ -20,7 +20,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <QueryProvider>
           {children}
         </QueryProvider>
-        <Toaster position="top-right" richColors />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#FDF8F5',
+              border: '1px solid #E8D8E0',
+              color: '#5C4A42',
+              fontFamily: 'inherit',
+            },
+            classNames: {
+              success: '[&>[data-icon]]:text-[#B5648A]',
+              error: '[&>[data-icon]]:text-red-500',
+            },
+          }}
+        />
       </body>
     </html>
   );
