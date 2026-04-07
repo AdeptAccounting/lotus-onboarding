@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
-const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/integrations/callback/google`;
+const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim();
+const REDIRECT_URI = `${(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').trim()}/api/integrations/callback/google`;
 
 const SCOPES = [
   'https://www.googleapis.com/auth/gmail.send',
