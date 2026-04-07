@@ -1336,12 +1336,12 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                   (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
                 );
                 return messages.length > 0 ? (
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                  <div className="space-y-2 overflow-x-hidden">
                     {messages.map((msg) => {
                       const isFromClient = msg.actor === 'client';
                       return (
                         <div key={msg.id} className={`flex ${isFromClient ? 'justify-start' : 'justify-end'}`}>
-                          <div className={`max-w-[85%] group relative`}>
+                          <div className={`max-w-[85%] group relative break-words`}>
                             <div className="flex items-center gap-1.5 mb-0.5">
                               {isFromClient && (
                                 <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#D4A0BB] to-[#B5648A] flex items-center justify-center">

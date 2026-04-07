@@ -80,6 +80,7 @@ export function usePortalMessages(token: string) {
       return data as ActivityLogEntry[];
     },
     enabled: !!token,
+    refetchInterval: 5000,
   });
 }
 

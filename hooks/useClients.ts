@@ -67,6 +67,7 @@ export function useClientActivity(clientId: string) {
       return data as ActivityLogEntry[];
     },
     enabled: !!clientId,
+    refetchInterval: 5000,
   });
 }
 
