@@ -185,10 +185,11 @@ const SECTIONS = [
               <span className="font-medium text-[#6B3A5E] text-sm">Documents Tab</span>
             </div>
             <p className="text-xs text-[#8B7080]">
-              See all documents the client signed during onboarding. Upload additional documents (contracts, forms,
-              medical records, etc.) by clicking &quot;Upload&quot;. Uploaded documents are <strong>private by default</strong>.
-              Click the eye icon to toggle visibility — when the eye is on, the client can see the document in their portal.
-              After uploading, you&apos;ll be asked if you want to notify the client via email.
+              See all documents the client signed during onboarding. Click the <strong>eye icon</strong> on any signed
+              document to view the full completed form with all filled-in fields and the signature. You can
+              <strong> print or save as PDF</strong> from the viewer. Upload additional documents by clicking
+              &quot;Upload&quot;. Uploaded documents are <strong>private by default</strong> — click the eye icon to
+              toggle visibility so the client can see it in their portal.
             </p>
           </div>
           <div className="p-4 rounded-xl border border-[#E8D8E0]/50 bg-white">

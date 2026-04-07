@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { OnboardingClient, OnboardingSignature, ActivityLogEntry, ClientStatus, ServiceType, UploadedDocument } from '@/types';
+import type { OnboardingClient, OnboardingSignature, ActivityLogEntry, ClientStatus, ServiceType, UploadedDocument, OnboardingDocument, OnboardingIntakeResponse } from '@/types';
 
 function getSupabase() {
   return createClient();
@@ -402,6 +402,39 @@ export function useToggleDocumentVisibility() {
     onSuccess: ({ clientId }) => {
       queryClient.invalidateQueries({ queryKey: ['uploaded-documents', clientId] });
     },
+  });
+}
+
+export function useDocument(documentId: string) {
+  return useQuery({
+    queryKey: ['document', documentId],
+    queryFn: async () => {
+      const { data, error } = await getSupabase()
+        .from('onboarding_documents')
+        .select('*')
+        .eq('id', documentId)
+        .single();
+      if (error) throw error;
+      return data as OnboardingDocument;
+    },
+    enabled: !!documentId,
+  });
+}
+
+export function useIntakeResponse(clientId: string, documentId: string) {
+  return useQuery({
+    queryKey: ['intake-response', clientId, documentId],
+    queryFn: async () => {
+      const { data, error } = await getSupabase()
+        .from('onboarding_intake_responses')
+        .select('*')
+        .eq('client_id', clientId)
+        .eq('document_id', documentId)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return (data as OnboardingIntakeResponse) ?? null;
+    },
+    enabled: !!clientId && !!documentId,
   });
 }
 

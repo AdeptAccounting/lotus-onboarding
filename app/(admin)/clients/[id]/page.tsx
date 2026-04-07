@@ -54,9 +54,11 @@ import {
   EyeOff,
   Bell,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { NotifyClientDialog } from '@/components/admin/notify-client-dialog';
+import { DocumentViewerDialog } from '@/components/admin/document-viewer';
 
 const SERVICE_ICONS: Record<ServiceType, React.ReactNode> = {
   birth_doula: <Baby size={20} />,
@@ -247,6 +249,15 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
+
+  // Document viewer state
+  const [viewerDoc, setViewerDoc] = useState<{
+    open: boolean;
+    documentId: string;
+    signerName: string;
+    signedAt: string;
+    ipAddress?: string | null;
+  }>({ open: false, documentId: '', signerName: '', signedAt: '' });
 
   if (!client) return null;
 
@@ -618,11 +629,20 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
                           <p className="text-xs text-[#8B7080]">Signed by {sig.signer_name}</p>
                         </div>
                       </div>
-                      <p className="text-xs text-[#8B7080] flex-shrink-0 ml-4">
-                        {new Date(sig.signed_at).toLocaleDateString('en-US', {
-                          month: 'short', day: 'numeric', year: 'numeric',
-                        })}
-                      </p>
+                      <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                        <p className="text-xs text-[#8B7080]">
+                          {new Date(sig.signed_at).toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', year: 'numeric',
+                          })}
+                        </p>
+                        <button
+                          onClick={() => setViewerDoc({ open: true, documentId: sig.document_id, signerName: sig.signer_name, signedAt: sig.signed_at, ipAddress: sig.ip_address })}
+                          className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
+                          title="View document"
+                        >
+                          <Eye size={14} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -923,6 +943,17 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
         updateType={notifyDialog.updateType}
         preview={notifyDialog.preview}
       />
+
+      {/* Document Viewer */}
+      <DocumentViewerDialog
+        open={viewerDoc.open}
+        onOpenChange={(open) => setViewerDoc((d) => ({ ...d, open }))}
+        clientId={clientId}
+        documentId={viewerDoc.documentId}
+        signerName={viewerDoc.signerName}
+        signedAt={viewerDoc.signedAt}
+        ipAddress={viewerDoc.ipAddress}
+      />
     </div>
   );
 }
@@ -964,6 +995,18 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
   const pipelineFileRef = useRef<HTMLInputElement>(null);
   const [pipelineUploading, setPipelineUploading] = useState(false);
   const [pipelineStorageError, setPipelineStorageError] = useState<string | null>(null);
+
+  // Activity collapse state
+  const [activityOpen, setActivityOpen] = useState(false);
+
+  // Document viewer state
+  const [viewerDoc, setViewerDoc] = useState<{
+    open: boolean;
+    documentId: string;
+    signerName: string;
+    signedAt: string;
+    ipAddress?: string | null;
+  }>({ open: false, documentId: '', signerName: '', signedAt: '' });
 
   const handlePipelineUpload = async (file: File) => {
     setPipelineUploading(true);
@@ -1275,270 +1318,7 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
             </Card>
           )}
 
-          {/* Signed Documents */}
-          {signatures && signatures.length > 0 && (
-            <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-[#6B3A5E] text-base">Signed Documents</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {signatures.map((sig) => (
-                    <div
-                      key={sig.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                          <CheckCircle2 size={14} className="text-green-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-[#5C4A42]">{sig.document?.name}</p>
-                          <p className="text-xs text-[#8B7080]">Signed by {sig.signer_name}</p>
-                        </div>
-                      </div>
-                      <p className="text-xs text-[#8B7080]">
-                        {new Date(sig.signed_at).toLocaleDateString('en-US', {
-                          month: 'short', day: 'numeric', year: 'numeric',
-                        })}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Activity Timeline */}
-          {activity && activity.length > 0 && (
-            <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-[#6B3A5E] text-base">Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {activity.map((entry, i) => (
-                    <div key={entry.id} className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className="w-2 h-2 rounded-full bg-[#B5648A] mt-2" />
-                        {i < activity.length - 1 && (
-                          <div className="w-px flex-1 bg-[#E8D8E0] mt-1" />
-                        )}
-                      </div>
-                      <div className="pb-4">
-                        <p className="text-sm text-[#5C4A42] font-medium">
-                          {entry.action
-                            .replace(/_/g, ' ')
-                            .replace(/\b\w/g, (c) => c.toUpperCase())}
-                        </p>
-                        <p className="text-xs text-[#8B7080] mt-0.5">
-                          {new Date(entry.created_at).toLocaleDateString('en-US', {
-                            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-                          })}
-                          {' '}&middot;{' '}{entry.actor}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* ── Uploaded Documents ── */}
-          <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
-                  <Upload size={16} />
-                  Documents
-                </CardTitle>
-                {!pipelineStorageError && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => pipelineFileRef.current?.click()}
-                    disabled={pipelineUploading}
-                    className="rounded-xl border-[#E8D8E0] text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] gap-1.5 text-xs h-8"
-                  >
-                    <Plus size={13} />
-                    {pipelineUploading ? 'Uploading...' : 'Upload'}
-                  </Button>
-                )}
-                <input
-                  ref={pipelineFileRef}
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handlePipelineUpload(file);
-                    e.target.value = '';
-                  }}
-                />
-              </div>
-            </CardHeader>
-            <CardContent>
-              {pipelineStorageError ? (
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800">
-                  {pipelineStorageError}
-                </div>
-              ) : !uploadedDocs || uploadedDocs.length === 0 ? (
-                <div
-                  className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-[#E8D8E0] rounded-xl cursor-pointer hover:border-[#B5648A]/50 transition-colors"
-                  onClick={() => pipelineFileRef.current?.click()}
-                >
-                  <Upload size={20} className="text-[#8B7080] mb-2" />
-                  <p className="text-sm text-[#8B7080]">Click to upload a document</p>
-                  <p className="text-xs text-[#C0A8B4] mt-1">PDF, images, Word documents</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {uploadedDocs.map((doc) => {
-                    const supabase = createSupabaseClient();
-                    const url = supabase.storage.from('client-documents').getPublicUrl(doc.storage_path).data.publicUrl;
-                    return (
-                      <div
-                        key={doc.id}
-                        className="flex items-center justify-between p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-[#F5EDF1] flex items-center justify-center flex-shrink-0">
-                            <FileText size={14} className="text-[#B5648A]" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-[#5C4A42] truncate">{doc.file_name}</p>
-                            <p className="text-xs text-[#8B7080]">
-                              {new Date(doc.uploaded_at).toLocaleDateString('en-US', {
-                                month: 'short', day: 'numeric', year: 'numeric',
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 ml-4 flex-shrink-0">
-                          <button
-                            onClick={() => toggleVisibility.mutate({ docId: doc.id, visible: !doc.visible_to_client, clientId })}
-                            className={`p-2 rounded-lg transition-colors ${
-                              doc.visible_to_client
-                                ? 'text-[#B5648A] hover:bg-[#F5EDF1]'
-                                : 'text-[#C0A8B4] hover:bg-[#F5EDF1] hover:text-[#8B7080]'
-                            }`}
-                            title={doc.visible_to_client ? 'Visible to client — click to hide' : 'Hidden from client — click to share'}
-                          >
-                            {doc.visible_to_client ? <Eye size={14} /> : <EyeOff size={14} />}
-                          </button>
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
-                          >
-                            <Download size={14} />
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* ── Private Notes ── */}
-          <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
-                <StickyNote size={16} />
-                Notes
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#8B7080] bg-amber-50/50 border border-amber-100 rounded-xl">
-                <StickyNote size={13} className="text-amber-500 flex-shrink-0" />
-                Private notes — only visible to you
-              </div>
-
-              {!noteOpen ? (
-                <button
-                  onClick={() => setNoteOpen(true)}
-                  className="flex items-center gap-2 text-sm text-[#8B7080] hover:text-[#6B3A5E] transition-colors"
-                >
-                  <Plus size={16} className="text-[#B5648A]" />
-                  Add a note
-                </button>
-              ) : (
-                <div className="space-y-3">
-                  <textarea
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    placeholder="Write a note about this client..."
-                    rows={3}
-                    className="w-full rounded-xl border border-[#E8D8E0] bg-[#FDF8F5] px-3 py-2.5 text-sm text-[#5C4A42] placeholder:text-[#C0A8B4] focus:outline-none focus:border-[#B5648A] resize-none"
-                  />
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { setNoteOpen(false); setNoteText(''); }}
-                      className="rounded-xl border-[#E8D8E0] text-[#8B7080] text-xs h-8"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={async () => {
-                        if (!noteText.trim()) return;
-                        try {
-                          await addNote.mutateAsync(noteText.trim());
-                          toast.success('Note added');
-                          setNoteText('');
-                          setNoteOpen(false);
-                        } catch {
-                          toast.error('Failed to add note');
-                        }
-                      }}
-                      disabled={!noteText.trim() || addNote.isPending}
-                      className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs h-8"
-                    >
-                      {addNote.isPending ? 'Saving...' : 'Save Note'}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {(() => {
-                const notes = activity?.filter((e) => e.action === 'note_added') ?? [];
-                return notes.length > 0 ? (
-                  <div className="space-y-2 pt-1">
-                    {notes.map((note) => (
-                      <div key={note.id} className="p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">
-                              {(note.details as { note?: string })?.note ?? ''}
-                            </p>
-                            <p className="text-xs text-[#8B7080] mt-1.5">
-                              {new Date(note.created_at).toLocaleDateString('en-US', {
-                                month: 'short', day: 'numeric',
-                                hour: 'numeric', minute: '2-digit',
-                              })}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => deleteNote.mutateAsync({ noteId: note.id, clientId }).then(() => toast.success('Note deleted')).catch(() => toast.error('Failed to delete'))}
-                            className="p-1 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null;
-              })()}
-            </CardContent>
-          </Card>
-
-          {/* ── Public Messages ── */}
+          {/* ── 1. Messages ── */}
           <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
@@ -1551,58 +1331,23 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                 <Send size={13} className="text-blue-500 flex-shrink-0" />
                 Messages are visible to the client in their portal
               </div>
-
               {!messageOpen ? (
-                <button
-                  onClick={() => setMessageOpen(true)}
-                  className="flex items-center gap-2 text-sm text-[#8B7080] hover:text-[#6B3A5E] transition-colors"
-                >
+                <button onClick={() => setMessageOpen(true)} className="flex items-center gap-2 text-sm text-[#8B7080] hover:text-[#6B3A5E] transition-colors">
                   <Plus size={16} className="text-[#B5648A]" />
                   Write a message
                 </button>
               ) : (
                 <div className="space-y-3">
-                  <textarea
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    placeholder="Write a message to the client... (they will see this in their portal)"
-                    rows={3}
-                    className="w-full rounded-xl border border-[#E8D8E0] bg-[#FDF8F5] px-3 py-2.5 text-sm text-[#5C4A42] placeholder:text-[#C0A8B4] focus:outline-none focus:border-[#B5648A] resize-none"
-                  />
+                  <textarea value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Write a message to the client... (they will see this in their portal)" rows={3} className="w-full rounded-xl border border-[#E8D8E0] bg-[#FDF8F5] px-3 py-2.5 text-sm text-[#5C4A42] placeholder:text-[#C0A8B4] focus:outline-none focus:border-[#B5648A] resize-none" />
                   <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { setMessageOpen(false); setMessageText(''); }}
-                      className="rounded-xl border-[#E8D8E0] text-[#8B7080] text-xs h-8"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={async () => {
-                        if (!messageText.trim()) return;
-                        try {
-                          await addMessage.mutateAsync(messageText.trim());
-                          toast.success('Message sent');
-                          const preview = messageText.trim().slice(0, 100);
-                          setMessageText('');
-                          setMessageOpen(false);
-                          setNotifyDialog({ open: true, updateType: 'message', preview });
-                        } catch {
-                          toast.error('Failed to send message');
-                        }
-                      }}
-                      disabled={!messageText.trim() || addMessage.isPending}
-                      className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs h-8 gap-1"
-                    >
+                    <Button variant="outline" size="sm" onClick={() => { setMessageOpen(false); setMessageText(''); }} className="rounded-xl border-[#E8D8E0] text-[#8B7080] text-xs h-8">Cancel</Button>
+                    <Button size="sm" onClick={async () => { if (!messageText.trim()) return; try { await addMessage.mutateAsync(messageText.trim()); toast.success('Message sent'); const preview = messageText.trim().slice(0, 100); setMessageText(''); setMessageOpen(false); setNotifyDialog({ open: true, updateType: 'message', preview }); } catch { toast.error('Failed to send message'); } }} disabled={!messageText.trim() || addMessage.isPending} className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs h-8 gap-1">
                       <Send size={12} />
                       {addMessage.isPending ? 'Sending...' : 'Send Message'}
                     </Button>
                   </div>
                 </div>
               )}
-
               {(() => {
                 const messages = activity?.filter((e) => e.action === 'message_sent') ?? [];
                 return messages.length > 0 ? (
@@ -1611,22 +1356,10 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                       <div key={msg.id} className="p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">
-                              {(msg.details as { message?: string })?.message ?? ''}
-                            </p>
-                            <p className="text-xs text-[#8B7080] mt-1.5">
-                              {new Date(msg.created_at).toLocaleDateString('en-US', {
-                                month: 'short', day: 'numeric',
-                                hour: 'numeric', minute: '2-digit',
-                              })}
-                            </p>
+                            <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">{(msg.details as { message?: string })?.message ?? ''}</p>
+                            <p className="text-xs text-[#8B7080] mt-1.5">{new Date(msg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                           </div>
-                          <button
-                            onClick={() => deleteMessage.mutateAsync({ messageId: msg.id, clientId }).then(() => toast.success('Message deleted')).catch(() => toast.error('Failed to delete'))}
-                            className="p-1 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          <button onClick={() => deleteMessage.mutateAsync({ messageId: msg.id, clientId }).then(() => toast.success('Message deleted')).catch(() => toast.error('Failed to delete'))} className="p-1 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"><Trash2 size={13} /></button>
                         </div>
                       </div>
                     ))}
@@ -1635,6 +1368,177 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
               })()}
             </CardContent>
           </Card>
+
+          {/* ── 2. Notes ── */}
+          <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
+                <StickyNote size={16} />
+                Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#8B7080] bg-amber-50/50 border border-amber-100 rounded-xl">
+                <StickyNote size={13} className="text-amber-500 flex-shrink-0" />
+                Private notes — only visible to you
+              </div>
+              {!noteOpen ? (
+                <button onClick={() => setNoteOpen(true)} className="flex items-center gap-2 text-sm text-[#8B7080] hover:text-[#6B3A5E] transition-colors">
+                  <Plus size={16} className="text-[#B5648A]" />
+                  Add a note
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Write a note about this client..." rows={3} className="w-full rounded-xl border border-[#E8D8E0] bg-[#FDF8F5] px-3 py-2.5 text-sm text-[#5C4A42] placeholder:text-[#C0A8B4] focus:outline-none focus:border-[#B5648A] resize-none" />
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" size="sm" onClick={() => { setNoteOpen(false); setNoteText(''); }} className="rounded-xl border-[#E8D8E0] text-[#8B7080] text-xs h-8">Cancel</Button>
+                    <Button size="sm" onClick={async () => { if (!noteText.trim()) return; try { await addNote.mutateAsync(noteText.trim()); toast.success('Note added'); setNoteText(''); setNoteOpen(false); } catch { toast.error('Failed to add note'); } }} disabled={!noteText.trim() || addNote.isPending} className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs h-8">
+                      {addNote.isPending ? 'Saving...' : 'Save Note'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {(() => {
+                const notes = activity?.filter((e) => e.action === 'note_added') ?? [];
+                return notes.length > 0 ? (
+                  <div className="space-y-2 pt-1">
+                    {notes.map((note) => (
+                      <div key={note.id} className="p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">{(note.details as { note?: string })?.note ?? ''}</p>
+                            <p className="text-xs text-[#8B7080] mt-1.5">{new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                          </div>
+                          <button onClick={() => deleteNote.mutateAsync({ noteId: note.id, clientId }).then(() => toast.success('Note deleted')).catch(() => toast.error('Failed to delete'))} className="p-1 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"><Trash2 size={13} /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null;
+              })()}
+            </CardContent>
+          </Card>
+
+          {/* ── 3. Documents (Signed + Uploaded) ── */}
+          <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
+                  <FileText size={16} />
+                  Documents
+                </CardTitle>
+                {!pipelineStorageError && (
+                  <Button variant="outline" size="sm" onClick={() => pipelineFileRef.current?.click()} disabled={pipelineUploading} className="rounded-xl border-[#E8D8E0] text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] gap-1.5 text-xs h-8">
+                    <Plus size={13} />
+                    {pipelineUploading ? 'Uploading...' : 'Upload'}
+                  </Button>
+                )}
+                <input ref={pipelineFileRef} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handlePipelineUpload(file); e.target.value = ''; }} />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Signed Documents */}
+              {signatures && signatures.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-[#8B7080] uppercase tracking-wider mb-2">Signed</p>
+                  <div className="space-y-2">
+                    {signatures.map((sig) => (
+                      <div key={sig.id} className="flex items-center justify-between p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                            <CheckCircle2 size={14} className="text-green-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-[#5C4A42] truncate">{sig.document?.name}</p>
+                            <p className="text-xs text-[#8B7080]">Signed by {sig.signer_name} &middot; {new Date(sig.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setViewerDoc({ open: true, documentId: sig.document_id, signerName: sig.signer_name, signedAt: sig.signed_at, ipAddress: sig.ip_address })}
+                          className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors flex-shrink-0"
+                          title="View document"
+                        >
+                          <Eye size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Uploaded Documents */}
+              {pipelineStorageError ? (
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800">{pipelineStorageError}</div>
+              ) : uploadedDocs && uploadedDocs.length > 0 ? (
+                <div>
+                  <p className="text-xs font-semibold text-[#8B7080] uppercase tracking-wider mb-2">Uploaded</p>
+                  <div className="space-y-2">
+                    {uploadedDocs.map((doc) => {
+                      const supabase = createSupabaseClient();
+                      const url = supabase.storage.from('client-documents').getPublicUrl(doc.storage_path).data.publicUrl;
+                      return (
+                        <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-[#F5EDF1] flex items-center justify-center flex-shrink-0"><FileText size={14} className="text-[#B5648A]" /></div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-[#5C4A42] truncate">{doc.file_name}</p>
+                              <p className="text-xs text-[#8B7080]">{new Date(doc.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 ml-4 flex-shrink-0">
+                            <button onClick={() => toggleVisibility.mutate({ docId: doc.id, visible: !doc.visible_to_client, clientId })} className={`p-2 rounded-lg transition-colors ${doc.visible_to_client ? 'text-[#B5648A] hover:bg-[#F5EDF1]' : 'text-[#C0A8B4] hover:bg-[#F5EDF1] hover:text-[#8B7080]'}`} title={doc.visible_to_client ? 'Visible to client — click to hide' : 'Hidden from client — click to share'}>
+                              {doc.visible_to_client ? <Eye size={14} /> : <EyeOff size={14} />}
+                            </button>
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"><Download size={14} /></a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : !signatures?.length ? (
+                <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-[#E8D8E0] rounded-xl cursor-pointer hover:border-[#B5648A]/50 transition-colors" onClick={() => pipelineFileRef.current?.click()}>
+                  <Upload size={20} className="text-[#8B7080] mb-2" />
+                  <p className="text-sm text-[#8B7080]">Click to upload a document</p>
+                  <p className="text-xs text-[#C0A8B4] mt-1">PDF, images, Word documents</p>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {/* ── 4. Activity (Collapsible) ── */}
+          {activity && activity.length > 0 && (
+            <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
+              <button
+                onClick={() => setActivityOpen(!activityOpen)}
+                className="w-full flex items-center justify-between px-6 py-4 text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-[#6B3A5E] text-base">Activity</CardTitle>
+                  <Badge className="bg-[#F5EDF1] text-[#6B3A5E] rounded-full text-xs px-2 py-0 border-0">{activity.length}</Badge>
+                </div>
+                <ChevronDown size={16} className={`text-[#8B7080] transition-transform duration-200 ${activityOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {activityOpen && (
+                <CardContent className="pt-0">
+                  <div className="space-y-4">
+                    {activity.map((entry, i) => (
+                      <div key={entry.id} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="w-2 h-2 rounded-full bg-[#B5648A] mt-2" />
+                          {i < activity.length - 1 && <div className="w-px flex-1 bg-[#E8D8E0] mt-1" />}
+                        </div>
+                        <div className="pb-4">
+                          <p className="text-sm text-[#5C4A42] font-medium">{entry.action.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</p>
+                          <p className="text-xs text-[#8B7080] mt-0.5">{new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} &middot; {entry.actor}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -1793,6 +1697,17 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
         clientName={`${client.first_name} ${client.last_name}`}
         updateType={notifyDialog.updateType}
         preview={notifyDialog.preview}
+      />
+
+      {/* Document Viewer */}
+      <DocumentViewerDialog
+        open={viewerDoc.open}
+        onOpenChange={(open) => setViewerDoc((d) => ({ ...d, open }))}
+        clientId={clientId}
+        documentId={viewerDoc.documentId}
+        signerName={viewerDoc.signerName}
+        signedAt={viewerDoc.signedAt}
+        ipAddress={viewerDoc.ipAddress}
       />
     </div>
   );
