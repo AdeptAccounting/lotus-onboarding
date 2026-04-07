@@ -87,7 +87,8 @@ export function usePortalUploadedDocuments(token: string) {
   return useQuery({
     queryKey: ['portal-uploaded-docs', token],
     queryFn: async () => {
-      const { data: client } = await getSupabase()
+      const supabase = getSupabase();
+      const { data: client } = await supabase
         .from('onboarding_clients')
         .select('id')
         .eq('access_token', token)
@@ -95,16 +96,18 @@ export function usePortalUploadedDocuments(token: string) {
 
       if (!client) return [];
 
-      const { data, error } = await getSupabase()
-        .storage
-        .from('client-documents')
-        .list(client.id, { sortBy: { column: 'created_at', order: 'desc' } });
+      const { data, error } = await supabase
+        .from('onboarding_uploaded_documents')
+        .select('*')
+        .eq('client_id', client.id)
+        .eq('visible_to_client', true)
+        .order('uploaded_at', { ascending: false });
 
       if (error) return [];
-      return (data ?? []).map((file) => ({
-        name: file.name,
-        url: getSupabase().storage.from('client-documents').getPublicUrl(`${client.id}/${file.name}`).data.publicUrl,
-        createdAt: file.created_at,
+      return (data ?? []).map((doc: { file_name: string; storage_path: string; uploaded_at: string }) => ({
+        name: doc.file_name,
+        url: supabase.storage.from('client-documents').getPublicUrl(doc.storage_path).data.publicUrl,
+        createdAt: doc.uploaded_at,
       }));
     },
     enabled: !!token,

@@ -1,7 +1,6 @@
 'use client';
 
-import { use, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { use } from 'react';
 import { usePortalClient } from '@/hooks/usePortal';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Heart, Sparkles } from 'lucide-react';
@@ -9,15 +8,7 @@ import Image from 'next/image';
 
 export default function CompletePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
-  const router = useRouter();
   const { data: client } = usePortalClient(token);
-
-  // Redirect active clients who navigate here directly to the hub
-  useEffect(() => {
-    if (client?.status === 'active' && !sessionStorage.getItem(`portal_just_completed_${token}`)) {
-      router.replace(`/portal/${token}`);
-    }
-  }, [client, token, router]);
 
   if (!client) {
     return (

@@ -106,9 +106,7 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
             <Image src="/logo.png" alt="The Lotus Program Experience" width={48} height={48} />
             <div>
               <h1 className="text-base font-semibold text-[#6B3A5E]">The Lotus Program Experience</h1>
-              <p className="text-xs text-[#B5648A]">
-                {clientStatus === 'active' ? 'Client Portal' : 'Client Onboarding Portal'}
-              </p>
+              <p className="text-xs text-[#B5648A]">Client Portal</p>
             </div>
           </div>
 
@@ -122,8 +120,8 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
           </button>
         </div>
 
-        {/* Active client nav tabs */}
-        {clientStatus === 'active' && (
+        {/* Nav tabs — visible for all clients */}
+        {clientStatus && (
           <div className="max-w-3xl mx-auto px-6">
             <nav className="flex gap-1 -mb-px">
               {[

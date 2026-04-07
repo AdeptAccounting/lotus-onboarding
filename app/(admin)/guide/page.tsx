@@ -186,8 +186,9 @@ const SECTIONS = [
             </div>
             <p className="text-xs text-[#8B7080]">
               See all documents the client signed during onboarding. Upload additional documents (contracts, forms,
-              medical records, etc.) by clicking &quot;Upload Document&quot;. After uploading, you&apos;ll be asked
-              if you want to notify the client via email.
+              medical records, etc.) by clicking &quot;Upload&quot;. Uploaded documents are <strong>private by default</strong>.
+              Click the eye icon to toggle visibility — when the eye is on, the client can see the document in their portal.
+              After uploading, you&apos;ll be asked if you want to notify the client via email.
             </p>
           </div>
           <div className="p-4 rounded-xl border border-[#E8D8E0]/50 bg-white">
@@ -310,14 +311,16 @@ const SECTIONS = [
     content: (
       <div className="space-y-4">
         <p>
-          Active clients have permanent access to their portal. It transforms from the onboarding flow into an ongoing client hub.
+          Clients have access to their portal from day one — not just after payment. During onboarding, they see their
+          progress steps plus quick links to Documents, Messages, and Payment. Once active, the progress steps go away
+          and the portal becomes their ongoing hub.
         </p>
         <div className="space-y-3">
           <div className="p-4 rounded-xl border border-[#E8D8E0]/50 bg-white">
             <p className="font-medium text-[#6B3A5E] text-sm mb-1">What clients see:</p>
             <ul className="text-xs text-[#8B7080] space-y-1.5 list-disc list-inside">
-              <li><strong>Home</strong> with quick links to Documents, Messages, and Payment</li>
-              <li><strong>Documents</strong> showing their signed intake docs + any files you upload</li>
+              <li><strong>Home</strong> with onboarding progress (if still onboarding) + quick links</li>
+              <li><strong>Documents</strong> showing their signed intake docs + any files you&apos;ve shared (toggled visible)</li>
               <li><strong>Messages</strong> showing any messages you send from the Messages tab</li>
               <li><strong>Payment</strong> with a &quot;Pay Now&quot; button (only visible if you set a payment link)</li>
             </ul>
@@ -326,7 +329,15 @@ const SECTIONS = [
             <p className="font-medium text-[#6B3A5E] text-sm mb-1">Notes vs Messages:</p>
             <ul className="text-xs text-[#8B7080] space-y-1.5 list-disc list-inside">
               <li><strong>Notes</strong> are private and only visible to you</li>
-              <li><strong>Messages</strong> are visible to the client in their portal</li>
+              <li><strong>Messages</strong> are visible to the client in their portal — you can share payment links directly in messages</li>
+            </ul>
+          </div>
+          <div className="p-4 rounded-xl border border-[#E8D8E0]/50 bg-white">
+            <p className="font-medium text-[#6B3A5E] text-sm mb-1">Document visibility:</p>
+            <ul className="text-xs text-[#8B7080] space-y-1.5 list-disc list-inside">
+              <li>Uploaded documents are <strong>private by default</strong></li>
+              <li>Click the eye icon next to a document to share it with the client</li>
+              <li>Toggle it off again to hide it from the client&apos;s portal</li>
             </ul>
           </div>
         </div>

@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { OnboardingClient, OnboardingSignature, ActivityLogEntry, ClientStatus, ServiceType } from '@/types';
+import type { OnboardingClient, OnboardingSignature, ActivityLogEntry, ClientStatus, ServiceType, UploadedDocument } from '@/types';
 
 function getSupabase() {
   return createClient();
@@ -368,6 +368,39 @@ export function useSavePaymentLink() {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['clients', data.id] });
       queryClient.invalidateQueries({ queryKey: ['activity', data.id] });
+    },
+  });
+}
+
+export function useUploadedDocuments(clientId: string) {
+  return useQuery({
+    queryKey: ['uploaded-documents', clientId],
+    queryFn: async () => {
+      const { data, error } = await getSupabase()
+        .from('onboarding_uploaded_documents')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('uploaded_at', { ascending: false });
+      if (error) throw error;
+      return data as UploadedDocument[];
+    },
+    enabled: !!clientId,
+  });
+}
+
+export function useToggleDocumentVisibility() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ docId, visible, clientId }: { docId: string; visible: boolean; clientId: string }) => {
+      const { error } = await getSupabase()
+        .from('onboarding_uploaded_documents')
+        .update({ visible_to_client: visible })
+        .eq('id', docId);
+      if (error) throw error;
+      return { docId, clientId };
+    },
+    onSuccess: ({ clientId }) => {
+      queryClient.invalidateQueries({ queryKey: ['uploaded-documents', clientId] });
     },
   });
 }

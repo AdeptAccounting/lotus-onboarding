@@ -14,6 +14,8 @@ import {
   useAddMessage,
   useDeleteMessage,
   useSavePaymentLink,
+  useUploadedDocuments,
+  useToggleDocumentVisibility,
 } from '@/hooks/useClients';
 import { createClient as createSupabaseClient } from '@/lib/supabase/client';
 import { PipelineStepper } from '@/components/admin/pipeline-stepper';
@@ -49,6 +51,7 @@ import {
   Download,
   Plus,
   Eye,
+  EyeOff,
   Bell,
   Loader2,
 } from 'lucide-react';
@@ -209,6 +212,8 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
   const deleteNote = useDeleteNote();
   const addMessage = useAddMessage(clientId);
   const deleteMessage = useDeleteMessage();
+  const { data: uploadedDocs } = useUploadedDocuments(clientId);
+  const toggleVisibility = useToggleDocumentVisibility();
 
   const [activeTab, setActiveTab] = useState<TabId>('info');
 
@@ -241,7 +246,6 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
   // Documents tab state
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; url: string; uploadedAt: string }[]>([]);
   const [storageError, setStorageError] = useState<string | null>(null);
 
   if (!client) return null;
@@ -357,11 +361,13 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
         }
         return;
       }
-      const { data: urlData } = supabase.storage.from('client-documents').getPublicUrl(path);
-      setUploadedFiles((prev) => [
-        { name: file.name, url: urlData.publicUrl, uploadedAt: new Date().toISOString() },
-        ...prev,
-      ]);
+      // Persist to DB
+      await supabase.from('onboarding_uploaded_documents').insert({
+        client_id: clientId,
+        file_name: file.name,
+        storage_path: path,
+        visible_to_client: false,
+      });
       toast.success('Document uploaded');
       setNotifyDialog({ open: true, updateType: 'document', preview: file.name });
     } catch (err) {
@@ -661,7 +667,7 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
                 <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800">
                   {storageError}
                 </div>
-              ) : uploadedFiles.length === 0 ? (
+              ) : !uploadedDocs || uploadedDocs.length === 0 ? (
                 <div
                   className="flex flex-col items-center justify-center py-10 border-2 border-dashed border-[#E8D8E0] rounded-xl cursor-pointer hover:border-[#B5648A]/50 transition-colors"
                   onClick={() => fileRef.current?.click()}
@@ -672,34 +678,51 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {uploadedFiles.map((doc, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-[#F5EDF1] flex items-center justify-center flex-shrink-0">
-                          <FileText size={14} className="text-[#B5648A]" />
+                  {uploadedDocs.map((doc) => {
+                    const supabase = createSupabaseClient();
+                    const url = supabase.storage.from('client-documents').getPublicUrl(doc.storage_path).data.publicUrl;
+                    return (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-[#F5EDF1] flex items-center justify-center flex-shrink-0">
+                            <FileText size={14} className="text-[#B5648A]" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-[#5C4A42] truncate">{doc.file_name}</p>
+                            <p className="text-xs text-[#8B7080]">
+                              {new Date(doc.uploaded_at).toLocaleDateString('en-US', {
+                                month: 'short', day: 'numeric', year: 'numeric',
+                              })}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-[#5C4A42] truncate">{doc.name}</p>
-                          <p className="text-xs text-[#8B7080]">
-                            {new Date(doc.uploadedAt).toLocaleDateString('en-US', {
-                              month: 'short', day: 'numeric', year: 'numeric',
-                            })}
-                          </p>
+                        <div className="flex items-center gap-1 ml-4 flex-shrink-0">
+                          <button
+                            onClick={() => toggleVisibility.mutate({ docId: doc.id, visible: !doc.visible_to_client, clientId })}
+                            className={`p-2 rounded-lg transition-colors ${
+                              doc.visible_to_client
+                                ? 'text-[#B5648A] hover:bg-[#F5EDF1]'
+                                : 'text-[#C0A8B4] hover:bg-[#F5EDF1] hover:text-[#8B7080]'
+                            }`}
+                            title={doc.visible_to_client ? 'Visible to client — click to hide' : 'Hidden from client — click to share'}
+                          >
+                            {doc.visible_to_client ? <Eye size={14} /> : <EyeOff size={14} />}
+                          </button>
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
+                          >
+                            <Download size={14} />
+                          </a>
                         </div>
                       </div>
-                      <a
-                        href={doc.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-4 flex-shrink-0 p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
-                      >
-                        <Download size={14} />
-                      </a>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -918,6 +941,8 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
   const deleteNote = useDeleteNote();
   const addMessage = useAddMessage(clientId);
   const deleteMessage = useDeleteMessage();
+  const { data: uploadedDocs } = useUploadedDocuments(clientId);
+  const toggleVisibility = useToggleDocumentVisibility();
 
   const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -934,6 +959,41 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
     updateType: 'message' | 'document' | 'payment_link';
     preview?: string;
   }>({ open: false, updateType: 'message' });
+
+  // Documents state
+  const pipelineFileRef = useRef<HTMLInputElement>(null);
+  const [pipelineUploading, setPipelineUploading] = useState(false);
+  const [pipelineStorageError, setPipelineStorageError] = useState<string | null>(null);
+
+  const handlePipelineUpload = async (file: File) => {
+    setPipelineUploading(true);
+    try {
+      const supabase = createSupabaseClient();
+      const path = `${clientId}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from('client-documents').upload(path, file);
+      if (error) {
+        if (error.message.includes('Bucket not found') || error.message.includes('bucket')) {
+          setPipelineStorageError('Document uploads coming soon — storage bucket not yet configured.');
+        } else {
+          throw error;
+        }
+        return;
+      }
+      await supabase.from('onboarding_uploaded_documents').insert({
+        client_id: clientId,
+        file_name: file.name,
+        storage_path: path,
+        visible_to_client: false,
+      });
+      toast.success('Document uploaded');
+      setNotifyDialog({ open: true, updateType: 'document', preview: file.name });
+    } catch (err) {
+      toast.error('Upload failed');
+      console.error(err);
+    } finally {
+      setPipelineUploading(false);
+    }
+  };
 
   // Send Reminder state
   const [reminderSending, setReminderSending] = useState(false);
@@ -1284,6 +1344,104 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
               </CardContent>
             </Card>
           )}
+
+          {/* ── Uploaded Documents ── */}
+          <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
+                  <Upload size={16} />
+                  Documents
+                </CardTitle>
+                {!pipelineStorageError && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => pipelineFileRef.current?.click()}
+                    disabled={pipelineUploading}
+                    className="rounded-xl border-[#E8D8E0] text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] gap-1.5 text-xs h-8"
+                  >
+                    <Plus size={13} />
+                    {pipelineUploading ? 'Uploading...' : 'Upload'}
+                  </Button>
+                )}
+                <input
+                  ref={pipelineFileRef}
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handlePipelineUpload(file);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {pipelineStorageError ? (
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                  {pipelineStorageError}
+                </div>
+              ) : !uploadedDocs || uploadedDocs.length === 0 ? (
+                <div
+                  className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-[#E8D8E0] rounded-xl cursor-pointer hover:border-[#B5648A]/50 transition-colors"
+                  onClick={() => pipelineFileRef.current?.click()}
+                >
+                  <Upload size={20} className="text-[#8B7080] mb-2" />
+                  <p className="text-sm text-[#8B7080]">Click to upload a document</p>
+                  <p className="text-xs text-[#C0A8B4] mt-1">PDF, images, Word documents</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {uploadedDocs.map((doc) => {
+                    const supabase = createSupabaseClient();
+                    const url = supabase.storage.from('client-documents').getPublicUrl(doc.storage_path).data.publicUrl;
+                    return (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-[#F5EDF1] flex items-center justify-center flex-shrink-0">
+                            <FileText size={14} className="text-[#B5648A]" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-[#5C4A42] truncate">{doc.file_name}</p>
+                            <p className="text-xs text-[#8B7080]">
+                              {new Date(doc.uploaded_at).toLocaleDateString('en-US', {
+                                month: 'short', day: 'numeric', year: 'numeric',
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 ml-4 flex-shrink-0">
+                          <button
+                            onClick={() => toggleVisibility.mutate({ docId: doc.id, visible: !doc.visible_to_client, clientId })}
+                            className={`p-2 rounded-lg transition-colors ${
+                              doc.visible_to_client
+                                ? 'text-[#B5648A] hover:bg-[#F5EDF1]'
+                                : 'text-[#C0A8B4] hover:bg-[#F5EDF1] hover:text-[#8B7080]'
+                            }`}
+                            title={doc.visible_to_client ? 'Visible to client — click to hide' : 'Hidden from client — click to share'}
+                          >
+                            {doc.visible_to_client ? <Eye size={14} /> : <EyeOff size={14} />}
+                          </button>
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
+                          >
+                            <Download size={14} />
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* ── Private Notes ── */}
           <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">

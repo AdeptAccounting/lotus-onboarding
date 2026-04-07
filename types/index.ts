@@ -91,6 +91,15 @@ export interface ActivityLogEntry {
   created_at: string;
 }
 
+export interface UploadedDocument {
+  id: string;
+  client_id: string;
+  file_name: string;
+  storage_path: string;
+  visible_to_client: boolean;
+  uploaded_at: string;
+}
+
 export interface OnboardingSettings {
   id: string;
   google_access_token: string | null;
