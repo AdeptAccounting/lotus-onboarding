@@ -112,6 +112,37 @@ export function useCreateClient() {
   });
 }
 
+export function useCreateActiveClient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (client: { first_name: string; last_name: string; email: string; phone?: string; service_type?: string; notes?: string }) => {
+      const { data, error } = await getSupabase()
+        .from('onboarding_clients')
+        .insert({
+          ...client,
+          status: 'active' as ClientStatus,
+          payment_completed_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      await getSupabase().from('onboarding_activity_log').insert({
+        client_id: data.id,
+        action: 'client_added_directly',
+        details: { name: `${client.first_name} ${client.last_name}`, note: 'Existing client added directly to active roster' },
+        actor: 'admin',
+      });
+
+      return data as OnboardingClient;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients', 'active'] });
+    },
+  });
+}
+
 export function useUpdateClient() {
   const queryClient = useQueryClient();
   return useMutation({

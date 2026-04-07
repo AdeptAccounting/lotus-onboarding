@@ -2,10 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import { useActiveClients } from '@/hooks/useClients';
+import { AddActiveClientDialog } from '@/components/admin/add-active-client-dialog';
 import { SERVICE_TYPE_LABELS } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Users, Sparkles, LayoutDashboard } from 'lucide-react';
+import { Search, Users, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ClientsPage() {
@@ -32,13 +33,7 @@ export default function ClientsPage() {
           <h1 className="text-2xl font-semibold text-[#6B3A5E]">Active Clients</h1>
           <p className="text-sm text-[#8B7080] mt-1">Full profiles for all active clients</p>
         </div>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#E8D8E0] bg-white text-sm text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
-        >
-          <LayoutDashboard size={15} />
-          Add Client
-        </Link>
+        <AddActiveClientDialog />
       </div>
 
       {/* Search */}
