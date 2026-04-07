@@ -30,6 +30,7 @@ export async function updateSession(request: NextRequest) {
   const isAdminRoute = request.nextUrl.pathname === '/' ||
     request.nextUrl.pathname.startsWith('/dashboard') ||
     request.nextUrl.pathname.startsWith('/clients') ||
+    request.nextUrl.pathname.startsWith('/guide') ||
     request.nextUrl.pathname.startsWith('/settings');
 
   if (isAdminRoute && !user) {

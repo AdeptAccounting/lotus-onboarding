@@ -4,12 +4,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Settings, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
+import { Users, Settings, LayoutDashboard, LogOut, Menu, X, HelpCircle } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/clients', label: 'Clients', icon: Users },
+  { href: '/guide', label: 'How It Works', icon: HelpCircle },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
