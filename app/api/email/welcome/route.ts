@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     const sent = await sendEmail({
       to: client.email,
-      subject: 'Welcome to The Lotus Program Experience — Your Onboarding Portal',
+      subject: 'Welcome to The Lotus Program Experience - Your Onboarding Portal',
       html: welcomeEmailHtml(`${client.first_name}`, portalUrl),
     });
 

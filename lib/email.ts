@@ -62,10 +62,13 @@ export async function sendEmail({ to, subject, html }: EmailParams): Promise<boo
     return false;
   }
 
+  // Encode subject for UTF-8 (RFC 2047)
+  const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, 'utf-8').toString('base64')}?=`;
+
   // Build MIME message
   const messageParts = [
     `To: ${to}`,
-    `Subject: ${subject}`,
+    `Subject: ${encodedSubject}`,
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=utf-8',
     '',

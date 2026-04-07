@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     const sent = await sendEmail({
       to: client.email,
-      subject: `Your ${serviceLabel} Contract is Ready — The Lotus Program Experience`,
+      subject: `Your ${serviceLabel} Contract is Ready - The Lotus Program Experience`,
       html: contractReadyEmailHtml(client.first_name, portalUrl, serviceLabel),
     });
 
