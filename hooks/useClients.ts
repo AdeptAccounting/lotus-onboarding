@@ -214,6 +214,61 @@ export function useSendContract() {
   });
 }
 
+export function useActiveClients() {
+  return useQuery({
+    queryKey: ['clients', 'active'],
+    queryFn: async () => {
+      const { data, error } = await getSupabase()
+        .from('onboarding_clients')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as OnboardingClient[];
+    },
+  });
+}
+
+export function useAddNote(clientId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (note: string) => {
+      const { data, error } = await getSupabase()
+        .from('onboarding_activity_log')
+        .insert({
+          client_id: clientId,
+          action: 'note_added',
+          details: { note },
+          actor: 'admin',
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as ActivityLogEntry;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity', clientId] });
+    },
+  });
+}
+
+export function useDeleteNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ noteId, clientId }: { noteId: string; clientId: string }) => {
+      const { error } = await getSupabase()
+        .from('onboarding_activity_log')
+        .delete()
+        .eq('id', noteId);
+      if (error) throw error;
+      return { noteId, clientId };
+    },
+    onSuccess: ({ clientId }) => {
+      queryClient.invalidateQueries({ queryKey: ['activity', clientId] });
+    },
+  });
+}
+
 export function useConfirmPayment() {
   const queryClient = useQueryClient();
   return useMutation({

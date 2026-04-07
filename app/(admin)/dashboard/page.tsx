@@ -47,7 +47,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -58,7 +58,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-2xl border border-[#E8D8E0]/50 p-5 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#F5EDF1] flex items-center justify-center">
@@ -139,8 +139,8 @@ export default function DashboardPage() {
           <p className="text-sm text-[#8B7080] mt-1">Add your first client to get started</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-[#E8D8E0]/50 overflow-hidden shadow-sm">
-          <table className="w-full">
+        <div className="bg-white rounded-2xl border border-[#E8D8E0]/50 overflow-hidden shadow-sm overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-[#E8D8E0]">
                 <th className="text-left px-6 py-3.5 text-xs font-semibold text-[#8B7080] uppercase tracking-wider">Client</th>
