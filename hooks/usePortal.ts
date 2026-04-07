@@ -4,13 +4,15 @@ import { createClient } from '@/lib/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import type { OnboardingClient, OnboardingDocument, OnboardingSignature } from '@/types';
 
-const supabase = createClient();
+function getSupabase() {
+  return createClient();
+}
 
 export function usePortalClient(token: string) {
   return useQuery({
     queryKey: ['portal', token],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('onboarding_clients')
         .select('*')
         .eq('access_token', token)
@@ -27,7 +29,7 @@ export function usePortalDocuments(token: string, documentType?: string) {
     queryKey: ['portal-documents', token, documentType],
     queryFn: async () => {
       // First get the client to know service type
-      const { data: client } = await supabase
+      const { data: client } = await getSupabase()
         .from('onboarding_clients')
         .select('service_type')
         .eq('access_token', token)
@@ -59,7 +61,7 @@ export function usePortalSignatures(token: string) {
   return useQuery({
     queryKey: ['portal-signatures', token],
     queryFn: async () => {
-      const { data: client } = await supabase
+      const { data: client } = await getSupabase()
         .from('onboarding_clients')
         .select('id')
         .eq('access_token', token)
@@ -67,7 +69,7 @@ export function usePortalSignatures(token: string) {
 
       if (!client) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('onboarding_signatures')
         .select('*')
         .eq('client_id', client.id);

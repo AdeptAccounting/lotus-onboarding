@@ -4,13 +4,15 @@ import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { OnboardingClient, OnboardingSignature, ActivityLogEntry, ClientStatus, ServiceType } from '@/types';
 
-const supabase = createClient();
+function getSupabase() {
+  return createClient();
+}
 
 export function useClients() {
   return useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('onboarding_clients')
         .select('*')
         .order('created_at', { ascending: false });
@@ -24,7 +26,7 @@ export function useClient(id: string) {
   return useQuery({
     queryKey: ['clients', id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('onboarding_clients')
         .select('*')
         .eq('id', id)
@@ -40,7 +42,7 @@ export function useClientSignatures(clientId: string) {
   return useQuery({
     queryKey: ['signatures', clientId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('onboarding_signatures')
         .select('*, document:onboarding_documents(name, slug, document_type)')
         .eq('client_id', clientId)
@@ -56,7 +58,7 @@ export function useClientActivity(clientId: string) {
   return useQuery({
     queryKey: ['activity', clientId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('onboarding_activity_log')
         .select('*')
         .eq('client_id', clientId)
@@ -72,7 +74,7 @@ export function useCreateClient() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (client: { first_name: string; last_name: string; email: string; phone?: string; notes?: string }) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('onboarding_clients')
         .insert({
           ...client,
@@ -84,7 +86,7 @@ export function useCreateClient() {
       if (error) throw error;
 
       // Log activity
-      await supabase.from('onboarding_activity_log').insert({
+      await getSupabase().from('onboarding_activity_log').insert({
         client_id: data.id,
         action: 'lead_created',
         details: { name: `${client.first_name} ${client.last_name}` },
@@ -114,7 +116,7 @@ export function useUpdateClient() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<OnboardingClient> & { id: string }) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('onboarding_clients')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -134,7 +136,7 @@ export function useApprovePacket1() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (clientId: string) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('onboarding_clients')
         .update({
           status: 'packet1_approved' as ClientStatus,
@@ -146,7 +148,7 @@ export function useApprovePacket1() {
         .single();
       if (error) throw error;
 
-      await supabase.from('onboarding_activity_log').insert({
+      await getSupabase().from('onboarding_activity_log').insert({
         client_id: clientId,
         action: 'packet1_approved',
         actor: 'admin',
@@ -170,7 +172,7 @@ export function useSendContract() {
       serviceType: ServiceType;
       paymentAmountCents: number;
     }) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('onboarding_clients')
         .update({
           service_type: serviceType,
@@ -184,7 +186,7 @@ export function useSendContract() {
         .single();
       if (error) throw error;
 
-      await supabase.from('onboarding_activity_log').insert({
+      await getSupabase().from('onboarding_activity_log').insert({
         client_id: clientId,
         action: 'contract_sent',
         details: { service_type: serviceType, amount_cents: paymentAmountCents },
