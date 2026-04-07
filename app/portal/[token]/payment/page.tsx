@@ -1,24 +1,16 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use } from 'react';
 import { usePortalClient } from '@/hooks/usePortal';
-import { createClient } from '@/lib/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SERVICE_TYPE_LABELS } from '@/types';
-import { toast } from 'sonner';
-import { CreditCard, Shield, Sparkles } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CreditCard, Shield, Sparkles, Clock, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function PaymentPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
-  const router = useRouter();
   const { data: client } = usePortalClient(token);
-  const queryClient = useQueryClient();
-  const supabase = createClient();
-  const [processing, setProcessing] = useState(false);
 
   if (!client) {
     return (
@@ -32,42 +24,28 @@ export default function PaymentPage({ params }: { params: Promise<{ token: strin
     ? (client.payment_amount_cents / 100).toFixed(2)
     : '0.00';
 
-  const handlePayment = async () => {
-    setProcessing(true);
-    try {
-      // TODO: Integrate Square Web Payments SDK here
-      // For now, simulate successful payment for testing
-      await supabase.from('onboarding_payments').insert({
-        client_id: client.id,
-        amount_cents: client.payment_amount_cents || 0,
-        status: 'completed',
-      });
-
-      await supabase
-        .from('onboarding_clients')
-        .update({
-          status: 'active',
-          payment_completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', client.id);
-
-      await supabase.from('onboarding_activity_log').insert({
-        client_id: client.id,
-        action: 'payment_completed',
-        details: { amount_cents: client.payment_amount_cents },
-        actor: 'client',
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['portal', token] });
-      toast.success('Payment successful!');
-      router.push(`/portal/${token}/complete`);
-    } catch {
-      toast.error('Payment failed. Please try again.');
-    } finally {
-      setProcessing(false);
-    }
-  };
+  // If payment is already completed, show success and link to complete page
+  if (client.status === 'active' || client.payment_completed_at) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="flex flex-col items-center text-center py-12">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+            <CheckCircle2 size={32} className="text-green-600" />
+          </div>
+          <h1 className="text-xl font-semibold text-[#6B3A5E] mb-2">Payment Received!</h1>
+          <p className="text-sm text-[#8B7080] mb-6">
+            Your payment has been confirmed. You&apos;re all set!
+          </p>
+          <Link
+            href={`/portal/${token}/complete`}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white font-medium shadow-lg shadow-[#B5648A]/20"
+          >
+            Continue
+          </Link>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -97,29 +75,45 @@ export default function PaymentPage({ params }: { params: Promise<{ token: strin
         </CardContent>
       </Card>
 
-      {/* Payment Form Placeholder */}
+      {/* Payment Instructions */}
       <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm mb-6">
         <CardContent className="pt-6">
-          <div className="p-8 border-2 border-dashed border-[#E8D8E0] rounded-xl text-center mb-4">
-            <CreditCard size={32} className="text-[#B5648A] mx-auto mb-3" />
-            <p className="text-sm text-[#8B7080]">
-              Square payment form will be integrated here.
+          <div className="flex flex-col items-center text-center p-6">
+            <div className="w-14 h-14 rounded-2xl bg-[#F5EDF1] flex items-center justify-center mb-4">
+              <CreditCard size={24} className="text-[#B5648A]" />
+            </div>
+            <h2 className="text-base font-semibold text-[#6B3A5E] mb-2">
+              Payment via Square
+            </h2>
+            <p className="text-sm text-[#8B7080] leading-relaxed mb-4">
+              You will receive a payment request from The Lotus Program Experience via Square.
+              Once your payment is processed, this page will automatically update and you&apos;ll
+              be ready to begin your journey.
             </p>
-            <p className="text-xs text-[#8B7080] mt-1">
-              For testing, click the button below to simulate a payment.
+
+            <div className="w-full bg-[#FDF8F5] rounded-xl border border-[#E8D8E0]/50 p-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
+                  <Clock size={18} className="text-amber-600" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-[#5C4A42]">Waiting for Payment</p>
+                  <p className="text-xs text-[#8B7080]">
+                    We&apos;ll notify you as soon as your payment is confirmed
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#8B7080]">
+              Haven&apos;t received your invoice yet? Please contact us at{' '}
+              <a href="mailto:meikasmealprepserv@gmail.com" className="text-[#B5648A] hover:underline">
+                meikasmealprepserv@gmail.com
+              </a>
             </p>
           </div>
 
-          <Button
-            onClick={handlePayment}
-            disabled={processing}
-            className="w-full rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] hover:from-[#9B4D73] hover:to-[#6B3A5E] text-white py-5 text-base shadow-lg shadow-[#B5648A]/20 gap-2"
-          >
-            <CreditCard size={18} />
-            {processing ? 'Processing...' : `Pay $${amount}`}
-          </Button>
-
-          <div className="flex items-center justify-center gap-2 mt-4 text-xs text-[#8B7080]">
+          <div className="flex items-center justify-center gap-2 mt-2 pb-2 text-xs text-[#8B7080]">
             <Shield size={14} />
             <span>Secure payment powered by Square</span>
           </div>

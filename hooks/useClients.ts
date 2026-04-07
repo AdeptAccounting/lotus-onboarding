@@ -213,3 +213,50 @@ export function useSendContract() {
     },
   });
 }
+
+export function useConfirmPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (clientId: string) => {
+      const supabase = getSupabase();
+
+      const { data: client } = await supabase
+        .from('onboarding_clients')
+        .select('payment_amount_cents')
+        .eq('id', clientId)
+        .single();
+
+      const { data, error } = await supabase
+        .from('onboarding_clients')
+        .update({
+          status: 'active' as ClientStatus,
+          payment_completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', clientId)
+        .select()
+        .single();
+      if (error) throw error;
+
+      await supabase.from('onboarding_payments').insert({
+        client_id: clientId,
+        amount_cents: client?.payment_amount_cents || 0,
+        status: 'completed',
+      });
+
+      await supabase.from('onboarding_activity_log').insert({
+        client_id: clientId,
+        action: 'payment_confirmed_manual',
+        details: { amount_cents: client?.payment_amount_cents, source: 'admin' },
+        actor: 'admin',
+      });
+
+      return data as OnboardingClient;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['activity', data.id] });
+    },
+  });
+}

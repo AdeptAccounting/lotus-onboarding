@@ -67,7 +67,6 @@ export default function SettingsPage() {
   }
 
   const gmailConnected = !!settings?.google_access_token;
-  const squareConnected = !!settings?.square_access_token;
 
   return (
     <div className="p-8 max-w-3xl">
@@ -145,35 +144,32 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Square Integration */}
+        {/* Payment Info */}
         <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
               <CreditCard size={18} />
-              Payment (Square)
+              Payments (Square)
             </CardTitle>
-            <Badge className={`rounded-full text-xs px-2.5 py-0.5 border-0 ${
-              squareConnected ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
-            }`}>
-              {squareConnected ? (
-                <span className="flex items-center gap-1"><CheckCircle2 size={12} /> Connected</span>
-              ) : (
-                <span className="flex items-center gap-1"><AlertCircle size={12} /> Not Connected</span>
-              )}
+            <Badge className="rounded-full text-xs px-2.5 py-0.5 border-0 bg-green-100 text-green-800">
+              <span className="flex items-center gap-1"><CheckCircle2 size={12} /> Ready</span>
             </Badge>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-[#8B7080] mb-4">
-              Connect your Square account to accept payments from clients after they sign their contract.
+            <p className="text-sm text-[#8B7080] mb-3">
+              When a client signs their contract, send them a Square invoice from your Square app for the agreed amount.
+              Payment confirmations are detected automatically via email.
             </p>
-            <Button
-              variant="outline"
-              className="rounded-xl border-[#E8D8E0] text-[#6B3A5E] hover:bg-[#F5EDF1] gap-2"
-              onClick={() => window.location.href = '/api/integrations/authorize/square'}
-            >
-              <CreditCard size={16} />
-              {squareConnected ? 'Reconnect Square' : 'Connect Square'}
-            </Button>
+            <div className="bg-[#FDF8F5] rounded-xl border border-[#E8D8E0]/50 p-4 space-y-2">
+              <p className="text-sm font-medium text-[#5C4A42]">How it works:</p>
+              <ol className="text-xs text-[#8B7080] space-y-1.5 list-decimal list-inside">
+                <li>Client signs their contract in the portal</li>
+                <li>You send them a Square invoice from your Square app</li>
+                <li>Client pays through Square</li>
+                <li>Payment is auto-detected and the client is moved to Active</li>
+                <li>If auto-detection misses it, use the manual &quot;Confirm Payment&quot; button on the client page</li>
+              </ol>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState } from 'react';
-import { useClient, useClientSignatures, useClientActivity, useApprovePacket1, useSendContract, useUpdateClient } from '@/hooks/useClients';
+import { useClient, useClientSignatures, useClientActivity, useApprovePacket1, useSendContract, useUpdateClient, useConfirmPayment } from '@/hooks/useClients';
 import { PipelineStepper } from '@/components/admin/pipeline-stepper';
 import { STATUS_LABELS, STATUS_COLORS, SERVICE_TYPE_LABELS, type ServiceType } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle2, Send, FileText, Clock, User, DollarSign, Heart, Baby, Flower2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Send, FileText, Clock, User, DollarSign, Heart, Baby, Flower2, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 
 const SERVICE_ICONS: Record<ServiceType, React.ReactNode> = {
@@ -26,6 +26,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const { data: activity } = useClientActivity(id);
   const approvePacket1 = useApprovePacket1();
   const sendContract = useSendContract();
+  const confirmPayment = useConfirmPayment();
   const updateClient = useUpdateClient();
 
   const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
@@ -199,6 +200,42 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                 >
                   <Send size={16} />
                   {sendContract.isPending ? 'Sending...' : 'Send Contract'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {(client.status === 'contract_signed' || client.status === 'payment_pending') && (
+            <Card className="rounded-2xl border-green-200 bg-green-50/50 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
+                  <CreditCard size={18} className="text-green-600" />
+                  Confirm Payment
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-[#8B7080] mb-2">
+                  {client.first_name} has signed their contract.
+                  Send them a Square invoice for <strong>${client.payment_amount_cents ? `$${(client.payment_amount_cents / 100).toFixed(2)}` : 'the agreed amount'}</strong>, then
+                  confirm payment below once it&apos;s been received.
+                </p>
+                <p className="text-xs text-[#8B7080] mb-4">
+                  Payment will be auto-confirmed if the Square receipt email is detected. Use this button as a manual fallback.
+                </p>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await confirmPayment.mutateAsync(client.id);
+                      toast.success('Payment confirmed!', { description: `${client.first_name} is now an active client` });
+                    } catch {
+                      toast.error('Failed to confirm payment');
+                    }
+                  }}
+                  disabled={confirmPayment.isPending}
+                  className="rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white gap-2"
+                >
+                  <CheckCircle2 size={16} />
+                  {confirmPayment.isPending ? 'Confirming...' : 'Confirm Payment Received'}
                 </Button>
               </CardContent>
             </Card>
