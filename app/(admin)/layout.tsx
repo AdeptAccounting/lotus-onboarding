@@ -4,13 +4,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Settings, LayoutDashboard, LogOut, Menu, X, HelpCircle } from 'lucide-react';
+import { Users, Settings, LayoutDashboard, LogOut, Menu, X, HelpCircle, Bell } from 'lucide-react';
 import { useState } from 'react';
 import { NotificationBell } from '@/components/admin/notification-bell';
+import { useUnreadCount } from '@/hooks/useNotifications';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/clients', label: 'Clients', icon: Users },
+  { href: '#notifications', label: 'Notifications', icon: Bell, isNotifications: true },
   { href: '/guide', label: 'How It Works', icon: HelpCircle },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -45,6 +47,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
+          // Notifications renders inline bell instead of a link
+          if ('isNotifications' in item && item.isNotifications) {
+            return (
+              <div key={item.href} className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium text-[#8B7080]">
+                <div className="flex items-center gap-3">
+                  <Bell size={18} />
+                  {item.label}
+                </div>
+                <NotificationBell />
+              </div>
+            );
+          }
+
           const isClientDetailPage = /^\/clients\/[^/]+/.test(pathname);
           const fromParam = isClientDetailPage && typeof window !== 'undefined'
             ? new URLSearchParams(window.location.search).get('from')
@@ -79,13 +94,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           );
         })}
       </nav>
-
-      <div className="px-4 pb-2">
-        <div className="flex items-center justify-between px-4 py-2">
-          <span className="text-xs font-medium text-[#8B7080]">Notifications</span>
-          <NotificationBell />
-        </div>
-      </div>
 
       <div className="p-4 border-t border-[#E8D8E0]">
         <div className="flex items-center gap-3 px-4 py-2 mb-2">

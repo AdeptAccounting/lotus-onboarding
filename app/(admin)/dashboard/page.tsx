@@ -42,7 +42,7 @@ export default function DashboardPage() {
   }, [clients]);
 
   const statusOptions: (ClientStatus | 'all')[] = [
-    'all', 'new_lead', 'packet1_sent', 'packet1_submitted', 'packet1_approved',
+    'all', 'packet1_sent', 'packet1_submitted', 'packet1_approved',
     'contract_sent', 'contract_signed', 'payment_pending', 'active', 'archived',
   ];
 
