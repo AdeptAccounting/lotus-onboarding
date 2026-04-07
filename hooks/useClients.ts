@@ -300,6 +300,78 @@ export function useDeleteNote() {
   });
 }
 
+export function useAddMessage(clientId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (message: string) => {
+      const { data, error } = await getSupabase()
+        .from('onboarding_activity_log')
+        .insert({
+          client_id: clientId,
+          action: 'message_sent',
+          details: { message },
+          actor: 'admin',
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as ActivityLogEntry;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity', clientId] });
+    },
+  });
+}
+
+export function useDeleteMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, clientId }: { messageId: string; clientId: string }) => {
+      const { error } = await getSupabase()
+        .from('onboarding_activity_log')
+        .delete()
+        .eq('id', messageId);
+      if (error) throw error;
+      return { messageId, clientId };
+    },
+    onSuccess: ({ clientId }) => {
+      queryClient.invalidateQueries({ queryKey: ['activity', clientId] });
+    },
+  });
+}
+
+export function useSavePaymentLink() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ clientId, paymentLinkUrl }: { clientId: string; paymentLinkUrl: string }) => {
+      const { data, error } = await getSupabase()
+        .from('onboarding_clients')
+        .update({
+          payment_link_url: paymentLinkUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', clientId)
+        .select()
+        .single();
+      if (error) throw error;
+
+      await getSupabase().from('onboarding_activity_log').insert({
+        client_id: clientId,
+        action: 'payment_link_set',
+        details: { url: paymentLinkUrl },
+        actor: 'admin',
+      });
+
+      return data as OnboardingClient;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['activity', data.id] });
+    },
+  });
+}
+
 export function useConfirmPayment() {
   const queryClient = useQueryClient();
   return useMutation({

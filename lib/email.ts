@@ -222,6 +222,91 @@ export function reminderEmailHtml(
   `;
 }
 
+export function paymentLinkReadyEmailHtml(clientName: string, portalUrl: string): string {
+  const firstName = clientName.split(' ')[0];
+  return `
+    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; background: #FDF8F5; padding: 40px 30px; border-radius: 16px;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: #6B3A5E; font-size: 24px; margin: 0;">The Lotus Program Experience</h1>
+      </div>
+
+      <p style="color: #5C4A42; font-size: 16px; line-height: 1.6;">
+        Hi ${firstName},
+      </p>
+
+      <p style="color: #5C4A42; font-size: 16px; line-height: 1.6;">
+        Your payment link is ready! You can now complete your payment through your client portal.
+      </p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${portalUrl}" style="display: inline-block; background: linear-gradient(135deg, #B5648A, #9B4D73); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600;">
+          Complete Payment
+        </a>
+      </div>
+
+      <p style="color: #8B7080; font-size: 14px; line-height: 1.6;">
+        Click the button above to access your portal and complete your payment securely via Square.
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #E8D8E0; margin: 30px 0;" />
+
+      <p style="color: #8B7080; font-size: 12px; text-align: center;">
+        With love and care,<br />
+        The Lotus Program Experience
+      </p>
+    </div>
+  `;
+}
+
+export function portalUpdateEmailHtml(
+  clientName: string,
+  portalUrl: string,
+  updateType: 'message' | 'document' | 'payment_link',
+  preview?: string
+): string {
+  const firstName = clientName.split(' ')[0];
+  const typeLabels = {
+    message: 'a new message',
+    document: 'a new document',
+    payment_link: 'a payment update',
+  };
+
+  return `
+    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; background: #FDF8F5; padding: 40px 30px; border-radius: 16px;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: #6B3A5E; font-size: 24px; margin: 0;">The Lotus Program Experience</h1>
+      </div>
+
+      <p style="color: #5C4A42; font-size: 16px; line-height: 1.6;">
+        Hi ${firstName},
+      </p>
+
+      <p style="color: #5C4A42; font-size: 16px; line-height: 1.6;">
+        Femeika has ${typeLabels[updateType]} for you in your client portal.
+      </p>
+
+      ${preview ? `
+      <div style="background: white; border-left: 3px solid #B5648A; padding: 12px 16px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+        <p style="color: #5C4A42; font-size: 14px; line-height: 1.5; margin: 0;">${preview}</p>
+      </div>
+      ` : ''}
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${portalUrl}" style="display: inline-block; background: linear-gradient(135deg, #B5648A, #9B4D73); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600;">
+          View in Portal
+        </a>
+      </div>
+
+      <hr style="border: none; border-top: 1px solid #E8D8E0; margin: 30px 0;" />
+
+      <p style="color: #8B7080; font-size: 12px; text-align: center;">
+        With love and care,<br />
+        The Lotus Program Experience
+      </p>
+    </div>
+  `;
+}
+
 export function packetCompleteNotificationHtml(clientName: string, adminUrl: string): string {
   return `
     <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; background: #FDF8F5; padding: 40px 30px; border-radius: 16px;">

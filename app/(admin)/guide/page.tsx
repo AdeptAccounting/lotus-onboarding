@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   UserPlus, FileText, CheckCircle2, Send, PenTool, CreditCard, Users,
-  ArrowRight, Mail, Upload, StickyNote, Settings, LayoutDashboard, Sparkles, Eye, Bell
+  ArrowRight, Mail, Upload, StickyNote, Settings, LayoutDashboard, Sparkles, Eye, Bell,
+  MessageSquare, Globe
 } from 'lucide-react';
 
 const SECTIONS = [
@@ -165,7 +166,7 @@ const SECTIONS = [
     content: (
       <div className="space-y-4">
         <p>
-          Every active client has a full profile with three tabs:
+          Every active client has a full profile with four tabs:
         </p>
         <div className="space-y-3">
           <div className="p-4 rounded-xl border border-[#E8D8E0]/50 bg-white">
@@ -185,17 +186,28 @@ const SECTIONS = [
             </div>
             <p className="text-xs text-[#8B7080]">
               See all documents the client signed during onboarding. Upload additional documents (contracts, forms,
-              medical records, etc.) by clicking &quot;Upload Document&quot;.
+              medical records, etc.) by clicking &quot;Upload Document&quot;. After uploading, you&apos;ll be asked
+              if you want to notify the client via email.
             </p>
           </div>
           <div className="p-4 rounded-xl border border-[#E8D8E0]/50 bg-white">
             <div className="flex items-center gap-2 mb-2">
               <StickyNote size={16} className="text-[#B5648A]" />
-              <span className="font-medium text-[#6B3A5E] text-sm">Notes Tab</span>
+              <span className="font-medium text-[#6B3A5E] text-sm">Notes Tab (Private)</span>
             </div>
             <p className="text-xs text-[#8B7080]">
-              Keep a running log of notes about the client. Great for tracking conversations, preferences,
-              special requests, birth plan details, or anything else you want to remember.
+              Keep a running log of private notes about the client. These are <strong>only visible to you</strong> and
+              never shown in the client portal. Great for tracking conversations, preferences, and internal details.
+            </p>
+          </div>
+          <div className="p-4 rounded-xl border border-[#E8D8E0]/50 bg-white">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare size={16} className="text-[#B5648A]" />
+              <span className="font-medium text-[#6B3A5E] text-sm">Messages Tab (Client-Visible)</span>
+            </div>
+            <p className="text-xs text-[#8B7080]">
+              Send messages to the client that they can see in their portal. After sending a message, you&apos;ll
+              be asked if you want to notify them via email. This is a one-way communication channel.
             </p>
           </div>
         </div>
@@ -209,16 +221,26 @@ const SECTIONS = [
     content: (
       <div className="space-y-4">
         <p>
-          Payments are handled through your existing Square account. Here&apos;s how it works:
+          Payments are handled through your existing Square account. You can now paste a Square payment link
+          directly into the portal so clients can pay with one click.
         </p>
         <div className="space-y-3">
           <div className="flex gap-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-              <Send size={14} className="text-amber-600" />
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-[#F5EDF1] flex items-center justify-center">
+              <CreditCard size={14} className="text-[#B5648A]" />
             </div>
             <div>
-              <p className="font-medium text-[#5C4A42] text-sm">You send the invoice</p>
-              <p className="text-xs text-[#8B7080]">After the client signs their contract, send them a Square invoice from your Square app for the amount you set when sending the contract.</p>
+              <p className="font-medium text-[#5C4A42] text-sm">Paste the Square payment link</p>
+              <p className="text-xs text-[#8B7080]">After the client signs their contract, paste their Square payment link into the &quot;Square Payment Link&quot; field on the client&apos;s page. Click &quot;Save & Notify&quot; to save it and send an email to the client.</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-[#F5EDF1] flex items-center justify-center">
+              <Globe size={14} className="text-[#B5648A]" />
+            </div>
+            <div>
+              <p className="font-medium text-[#5C4A42] text-sm">Client pays through their portal</p>
+              <p className="text-xs text-[#8B7080]">The client receives an email and sees a &quot;Pay Now&quot; button in their portal that opens the Square payment page.</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -268,6 +290,44 @@ const SECTIONS = [
           <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
             <Bell size={14} className="text-[#B5648A] flex-shrink-0" />
             <p className="text-xs text-[#5C4A42]"><strong>Reminder email</strong> sent when you click &quot;Send Reminder&quot; on a client&apos;s profile, nudging them to complete their current step</p>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
+            <MessageSquare size={14} className="text-[#B5648A] flex-shrink-0" />
+            <p className="text-xs text-[#5C4A42]"><strong>Portal update email</strong> (optional) sent when you send a message, upload a document, or set a payment link, if you choose &quot;Yes, Notify&quot;</p>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
+            <CreditCard size={14} className="text-[#B5648A] flex-shrink-0" />
+            <p className="text-xs text-[#5C4A42]"><strong>Payment link email</strong> sent automatically when you save a payment link for a client</p>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'portal',
+    title: 'Client Portal',
+    icon: Globe,
+    content: (
+      <div className="space-y-4">
+        <p>
+          Active clients have permanent access to their portal. It transforms from the onboarding flow into an ongoing client hub.
+        </p>
+        <div className="space-y-3">
+          <div className="p-4 rounded-xl border border-[#E8D8E0]/50 bg-white">
+            <p className="font-medium text-[#6B3A5E] text-sm mb-1">What clients see:</p>
+            <ul className="text-xs text-[#8B7080] space-y-1.5 list-disc list-inside">
+              <li><strong>Home</strong> with quick links to Documents, Messages, and Payment</li>
+              <li><strong>Documents</strong> showing their signed intake docs + any files you upload</li>
+              <li><strong>Messages</strong> showing any messages you send from the Messages tab</li>
+              <li><strong>Payment</strong> with a &quot;Pay Now&quot; button (only visible if you set a payment link)</li>
+            </ul>
+          </div>
+          <div className="p-4 rounded-xl border border-[#E8D8E0]/50 bg-white">
+            <p className="font-medium text-[#6B3A5E] text-sm mb-1">Notes vs Messages:</p>
+            <ul className="text-xs text-[#8B7080] space-y-1.5 list-disc list-inside">
+              <li><strong>Notes</strong> are private and only visible to you</li>
+              <li><strong>Messages</strong> are visible to the client in their portal</li>
+            </ul>
           </div>
         </div>
       </div>

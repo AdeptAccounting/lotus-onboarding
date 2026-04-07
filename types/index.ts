@@ -35,6 +35,7 @@ export interface OnboardingClient {
   contract_signed_at: string | null;
   payment_completed_at: string | null;
   square_payment_id: string | null;
+  payment_link_url: string | null;
   created_at: string;
   updated_at: string;
 }

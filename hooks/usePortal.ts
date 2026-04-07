@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import type { OnboardingClient, OnboardingDocument, OnboardingSignature } from '@/types';
+import type { OnboardingClient, OnboardingDocument, OnboardingSignature, ActivityLogEntry } from '@/types';
 
 function getSupabase() {
   return createClient();
@@ -52,6 +52,60 @@ export function usePortalDocuments(token: string, documentType?: string) {
       const { data, error } = await query;
       if (error) throw error;
       return data as OnboardingDocument[];
+    },
+    enabled: !!token,
+  });
+}
+
+export function usePortalMessages(token: string) {
+  return useQuery({
+    queryKey: ['portal-messages', token],
+    queryFn: async () => {
+      const { data: client } = await getSupabase()
+        .from('onboarding_clients')
+        .select('id')
+        .eq('access_token', token)
+        .single();
+
+      if (!client) return [];
+
+      const { data, error } = await getSupabase()
+        .from('onboarding_activity_log')
+        .select('*')
+        .eq('client_id', client.id)
+        .eq('action', 'message_sent')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as ActivityLogEntry[];
+    },
+    enabled: !!token,
+  });
+}
+
+export function usePortalUploadedDocuments(token: string) {
+  return useQuery({
+    queryKey: ['portal-uploaded-docs', token],
+    queryFn: async () => {
+      const { data: client } = await getSupabase()
+        .from('onboarding_clients')
+        .select('id')
+        .eq('access_token', token)
+        .single();
+
+      if (!client) return [];
+
+      const { data, error } = await getSupabase()
+        .storage
+        .from('client-documents')
+        .list(client.id, { sortBy: { column: 'created_at', order: 'desc' } });
+
+      if (error) return [];
+      return (data ?? []).map((file) => ({
+        name: file.name,
+        url: getSupabase().storage.from('client-documents').getPublicUrl(`${client.id}/${file.name}`).data.publicUrl,
+        createdAt: file.created_at,
+      }));
     },
     enabled: !!token,
   });

@@ -2,9 +2,10 @@
 
 import { use, useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { LogOut } from 'lucide-react';
+import { LogOut, Home, FileText, MessageSquare, CreditCard } from 'lucide-react';
 
 interface PortalLayoutProps {
   children: React.ReactNode;
@@ -16,6 +17,8 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [verified, setVerified] = useState<boolean | null>(null);
+  const [clientStatus, setClientStatus] = useState<string | null>(null);
+  const [hasPaymentLink, setHasPaymentLink] = useState(false);
 
   const isVerifyPage = pathname === `/portal/${token}/verify`;
 
@@ -31,6 +34,20 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
       router.replace(`/portal/${token}/verify`);
     } else {
       setVerified(true);
+
+      // Fetch client status for nav
+      const supabaseForStatus = createClient();
+      supabaseForStatus
+        .from('onboarding_clients')
+        .select('status, payment_link_url')
+        .eq('access_token', token)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setClientStatus(data.status);
+            setHasPaymentLink(!!data.payment_link_url);
+          }
+        });
 
       // Log a portal_visit if we haven't logged one in the last 30 minutes
       const lastVisitKey = `portal_last_visit_${token}`;
@@ -89,7 +106,9 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
             <Image src="/logo.png" alt="The Lotus Program Experience" width={48} height={48} />
             <div>
               <h1 className="text-base font-semibold text-[#6B3A5E]">The Lotus Program Experience</h1>
-              <p className="text-xs text-[#B5648A]">Client Onboarding Portal</p>
+              <p className="text-xs text-[#B5648A]">
+                {clientStatus === 'active' ? 'Client Portal' : 'Client Onboarding Portal'}
+              </p>
             </div>
           </div>
 
@@ -102,6 +121,36 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
             Sign Out
           </button>
         </div>
+
+        {/* Active client nav tabs */}
+        {clientStatus === 'active' && (
+          <div className="max-w-3xl mx-auto px-6">
+            <nav className="flex gap-1 -mb-px">
+              {[
+                { href: `/portal/${token}`, label: 'Home', icon: Home },
+                { href: `/portal/${token}/my-documents`, label: 'Documents', icon: FileText },
+                { href: `/portal/${token}/messages`, label: 'Messages', icon: MessageSquare },
+                ...(hasPaymentLink ? [{ href: `/portal/${token}/payment`, label: 'Payment', icon: CreditCard }] : []),
+              ].map((tab) => {
+                const isActive = pathname === tab.href;
+                return (
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                      isActive
+                        ? 'border-[#B5648A] text-[#6B3A5E]'
+                        : 'border-transparent text-[#8B7080] hover:text-[#6B3A5E] hover:border-[#E8D8E0]'
+                    }`}
+                  >
+                    <tab.icon size={15} />
+                    {tab.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* Content */}

@@ -4,9 +4,10 @@ import { use } from 'react';
 import { usePortalClient } from '@/hooks/usePortal';
 import { PIPELINE_STEPS, STATUS_LABELS } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Check, FileText, PenTool, CreditCard, Sparkles } from 'lucide-react';
+import { Check, FileText, PenTool, CreditCard, Sparkles, MessageSquare, Heart } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { Card, CardContent } from '@/components/ui/card';
 
 const PORTAL_STEPS = [
   { status: 'packet1_sent', label: 'Review & Sign Documents', icon: FileText, href: '/documents' },
@@ -39,6 +40,72 @@ export default function PortalWelcomePage({ params }: { params: Promise<{ token:
         <p className="text-[#6B3A5E] font-medium">Portal not found</p>
         <p className="text-sm text-[#8B7080] mt-1">This link may be invalid or expired.</p>
       </div>
+    );
+  }
+
+  // Active client hub
+  if (client.status === 'active') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="text-center mb-10">
+          <h1 className="text-2xl font-semibold text-[#6B3A5E]">
+            Welcome back, {client.first_name}!
+          </h1>
+          <p className="text-[#8B7080] mt-2">
+            Your client portal — everything in one place.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link href={`/portal/${token}/my-documents`}>
+            <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
+              <CardContent className="pt-6 flex flex-col items-center text-center p-6">
+                <div className="w-12 h-12 rounded-2xl bg-[#F5EDF1] flex items-center justify-center mb-3">
+                  <FileText size={22} className="text-[#B5648A]" />
+                </div>
+                <h3 className="text-sm font-semibold text-[#6B3A5E] mb-1">Documents</h3>
+                <p className="text-xs text-[#8B7080]">View your signed documents and shared files</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href={`/portal/${token}/messages`}>
+            <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
+              <CardContent className="pt-6 flex flex-col items-center text-center p-6">
+                <div className="w-12 h-12 rounded-2xl bg-[#F5EDF1] flex items-center justify-center mb-3">
+                  <MessageSquare size={22} className="text-[#B5648A]" />
+                </div>
+                <h3 className="text-sm font-semibold text-[#6B3A5E] mb-1">Messages</h3>
+                <p className="text-xs text-[#8B7080]">Read messages from your care team</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {client.payment_link_url && (
+            <Link href={`/portal/${token}/payment`}>
+              <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
+                <CardContent className="pt-6 flex flex-col items-center text-center p-6">
+                  <div className="w-12 h-12 rounded-2xl bg-[#F5EDF1] flex items-center justify-center mb-3">
+                    <CreditCard size={22} className="text-[#B5648A]" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-[#6B3A5E] mb-1">Payment</h3>
+                  <p className="text-xs text-[#8B7080]">View and complete your payment</p>
+                </CardContent>
+              </Card>
+            </Link>
+          )}
+        </div>
+
+        <div className="flex items-center justify-center gap-1 text-[#B5648A] mt-10">
+          <Heart size={14} fill="#B5648A" />
+          <span className="text-sm font-medium">Thank you for being part of the Lotus family</span>
+          <Heart size={14} fill="#B5648A" />
+        </div>
+      </motion.div>
     );
   }
 

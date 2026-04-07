@@ -11,6 +11,9 @@ import {
   useConfirmPayment,
   useAddNote,
   useDeleteNote,
+  useAddMessage,
+  useDeleteMessage,
+  useSavePaymentLink,
 } from '@/hooks/useClients';
 import { createClient as createSupabaseClient } from '@/lib/supabase/client';
 import { PipelineStepper } from '@/components/admin/pipeline-stepper';
@@ -50,6 +53,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { NotifyClientDialog } from '@/components/admin/notify-client-dialog';
 
 const SERVICE_ICONS: Record<ServiceType, React.ReactNode> = {
   birth_doula: <Baby size={20} />,
@@ -57,7 +61,7 @@ const SERVICE_ICONS: Record<ServiceType, React.ReactNode> = {
   death_doula: <Flower2 size={20} />,
 };
 
-type TabId = 'info' | 'documents' | 'notes';
+type TabId = 'info' | 'documents' | 'notes' | 'messages';
 
 // ─── Editable Client Info ─────────────────────────────────────────────────────
 
@@ -203,6 +207,8 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
   const updateClient = useUpdateClient();
   const addNote = useAddNote(clientId);
   const deleteNote = useDeleteNote();
+  const addMessage = useAddMessage(clientId);
+  const deleteMessage = useDeleteMessage();
 
   const [activeTab, setActiveTab] = useState<TabId>('info');
 
@@ -223,6 +229,15 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
 
+  // Messages tab state
+  const [messageOpen, setMessageOpen] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [notifyDialog, setNotifyDialog] = useState<{
+    open: boolean;
+    updateType: 'message' | 'document' | 'payment_link';
+    preview?: string;
+  }>({ open: false, updateType: 'message' });
+
   // Documents tab state
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -232,6 +247,7 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
   if (!client) return null;
 
   const notes = activity?.filter((e) => e.action === 'note_added') ?? [];
+  const messages = activity?.filter((e) => e.action === 'message_sent') ?? [];
 
   // Personal info handlers
   const startPersonalEdit = () => {
@@ -300,6 +316,30 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
     }
   };
 
+  // Message handlers
+  const handleAddMessage = async () => {
+    if (!messageText.trim()) return;
+    try {
+      await addMessage.mutateAsync(messageText.trim());
+      toast.success('Message sent');
+      const preview = messageText.trim().slice(0, 100);
+      setMessageText('');
+      setMessageOpen(false);
+      setNotifyDialog({ open: true, updateType: 'message', preview });
+    } catch {
+      toast.error('Failed to send message');
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      await deleteMessage.mutateAsync({ messageId, clientId });
+      toast.success('Message deleted');
+    } catch {
+      toast.error('Failed to delete message');
+    }
+  };
+
   // Document upload
   const handleUpload = async (file: File) => {
     setUploading(true);
@@ -323,6 +363,7 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
         ...prev,
       ]);
       toast.success('Document uploaded');
+      setNotifyDialog({ open: true, updateType: 'document', preview: file.name });
     } catch (err) {
       toast.error('Upload failed');
       console.error(err);
@@ -335,6 +376,7 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
     { id: 'info', label: 'Info' },
     { id: 'documents', label: 'Documents' },
     { id: 'notes', label: `Notes${notes.length > 0 ? ` (${notes.length})` : ''}` },
+    { id: 'messages', label: `Messages${messages.length > 0 ? ` (${messages.length})` : ''}` },
   ];
 
   return (
@@ -668,6 +710,10 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
       {/* ── NOTES TAB ── */}
       {activeTab === 'notes' && (
         <div className="space-y-4">
+          <div className="flex items-center gap-2 px-1 py-1.5 text-xs text-[#8B7080] bg-amber-50/50 border border-amber-100 rounded-xl px-3">
+            <StickyNote size={13} className="text-amber-500 flex-shrink-0" />
+            Private notes — only visible to you
+          </div>
           {/* Add Note */}
           <div className="bg-white rounded-2xl border border-[#E8D8E0]/50 shadow-sm p-5">
             {!noteOpen ? (
@@ -751,6 +797,109 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
           )}
         </div>
       )}
+
+      {/* ── MESSAGES TAB ── */}
+      {activeTab === 'messages' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#8B7080] bg-blue-50/50 border border-blue-100 rounded-xl">
+            <Send size={13} className="text-blue-500 flex-shrink-0" />
+            Messages are visible to the client in their portal
+          </div>
+
+          {/* Add Message */}
+          <div className="bg-white rounded-2xl border border-[#E8D8E0]/50 shadow-sm p-5">
+            {!messageOpen ? (
+              <button
+                onClick={() => setMessageOpen(true)}
+                className="flex items-center gap-2 text-sm text-[#8B7080] hover:text-[#6B3A5E] transition-colors"
+              >
+                <Plus size={16} className="text-[#B5648A]" />
+                Write a message
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  placeholder="Write a message to the client... (they will see this in their portal)"
+                  rows={4}
+                  className="w-full rounded-xl border border-[#E8D8E0] bg-[#FDF8F5] px-3 py-2.5 text-sm text-[#5C4A42] placeholder:text-[#C0A8B4] focus:outline-none focus:border-[#B5648A] resize-none"
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setMessageOpen(false); setMessageText(''); }}
+                    className="rounded-xl border-[#E8D8E0] text-[#8B7080] text-xs h-8"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleAddMessage}
+                    disabled={!messageText.trim() || addMessage.isPending}
+                    className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs h-8 gap-1"
+                  >
+                    <Send size={12} />
+                    {addMessage.isPending ? 'Sending...' : 'Send Message'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Messages List */}
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-[#E8D8E0]/50">
+              <div className="w-14 h-14 rounded-full bg-[#F5EDF1] flex items-center justify-center mb-3">
+                <Send size={20} className="text-[#B5648A]" />
+              </div>
+              <p className="text-[#6B3A5E] font-medium text-sm">No messages yet</p>
+              <p className="text-xs text-[#8B7080] mt-1">Send a message to the client</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className="bg-white rounded-2xl border border-[#E8D8E0]/50 shadow-sm p-5"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">
+                        {(msg.details as { message?: string })?.message ?? ''}
+                      </p>
+                      <p className="text-xs text-[#8B7080] mt-2">
+                        {new Date(msg.created_at).toLocaleDateString('en-US', {
+                          month: 'short', day: 'numeric', year: 'numeric',
+                          hour: 'numeric', minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteMessage(msg.id)}
+                      className="p-1.5 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                      title="Delete message"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Notify Client Dialog */}
+      <NotifyClientDialog
+        open={notifyDialog.open}
+        onOpenChange={(open) => setNotifyDialog((d) => ({ ...d, open }))}
+        clientId={clientId}
+        clientName={`${client.first_name} ${client.last_name}`}
+        updateType={notifyDialog.updateType}
+        preview={notifyDialog.preview}
+      />
     </div>
   );
 }
@@ -764,9 +913,12 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
   const sendContract = useSendContract();
   const confirmPayment = useConfirmPayment();
   const updateClient = useUpdateClient();
+  const savePaymentLink = useSavePaymentLink();
 
   const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState(client.payment_link_url ?? '');
+  const [paymentLinkSaving, setPaymentLinkSaving] = useState(false);
 
   // Send Reminder state
   const [reminderSending, setReminderSending] = useState(false);
@@ -948,37 +1100,102 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                   Confirm Payment
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-[#8B7080] mb-2">
-                  {client.first_name} has signed their contract. Send them a Square invoice for{' '}
-                  <strong>
-                    {client.payment_amount_cents
-                      ? `$${(client.payment_amount_cents / 100).toFixed(2)}`
-                      : 'the agreed amount'}
-                  </strong>
-                  , then confirm payment below once it&apos;s been received.
-                </p>
-                <p className="text-xs text-[#8B7080] mb-4">
-                  Payment will be auto-confirmed if the Square receipt email is detected. Use this
-                  button as a manual fallback.
-                </p>
-                <Button
-                  onClick={async () => {
-                    try {
-                      await confirmPayment.mutateAsync(client.id);
-                      toast.success('Payment confirmed!', {
-                        description: `${client.first_name} is now an active client`,
-                      });
-                    } catch {
-                      toast.error('Failed to confirm payment');
-                    }
-                  }}
-                  disabled={confirmPayment.isPending}
-                  className="rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white gap-2"
-                >
-                  <CheckCircle2 size={16} />
-                  {confirmPayment.isPending ? 'Confirming...' : 'Confirm Payment Received'}
-                </Button>
+              <CardContent className="space-y-4">
+                {/* Square Payment Link */}
+                <div>
+                  <Label className="text-[#5C4A42] text-sm">Square Payment Link</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type="url"
+                      value={paymentLinkUrl}
+                      onChange={(e) => setPaymentLinkUrl(e.target.value)}
+                      placeholder="https://square.link/u/..."
+                      className="rounded-xl border-[#E8D8E0] focus:border-[#B5648A] text-sm flex-1"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        if (!paymentLinkUrl.trim()) {
+                          toast.error('Please enter a payment link URL');
+                          return;
+                        }
+                        setPaymentLinkSaving(true);
+                        try {
+                          await savePaymentLink.mutateAsync({ clientId: client.id, paymentLinkUrl: paymentLinkUrl.trim() });
+                          toast.success('Payment link saved');
+                          // Send payment link email
+                          try {
+                            await fetch('/api/email/payment-link', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ client_id: client.id }),
+                            });
+                            toast.success('Payment link email sent to client');
+                          } catch {
+                            // Non-fatal
+                          }
+                        } catch {
+                          toast.error('Failed to save payment link');
+                        } finally {
+                          setPaymentLinkSaving(false);
+                        }
+                      }}
+                      disabled={paymentLinkSaving || !paymentLinkUrl.trim()}
+                      className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs gap-1 h-9 px-4"
+                    >
+                      {paymentLinkSaving ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <Send size={13} />
+                      )}
+                      Save & Notify
+                    </Button>
+                  </div>
+                  {client.payment_link_url && (
+                    <a
+                      href={client.payment_link_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[#B5648A] hover:underline mt-1 inline-block"
+                    >
+                      Current link: {client.payment_link_url}
+                    </a>
+                  )}
+                </div>
+
+                <hr className="border-[#E8D8E0]" />
+
+                <div>
+                  <p className="text-sm text-[#8B7080] mb-2">
+                    {client.first_name} has signed their contract. Amount due:{' '}
+                    <strong>
+                      {client.payment_amount_cents
+                        ? `$${(client.payment_amount_cents / 100).toFixed(2)}`
+                        : 'the agreed amount'}
+                    </strong>
+                  </p>
+                  <p className="text-xs text-[#8B7080] mb-4">
+                    Payment will be auto-confirmed if the Square receipt email is detected. Use this
+                    button as a manual fallback.
+                  </p>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        await confirmPayment.mutateAsync(client.id);
+                        toast.success('Payment confirmed!', {
+                          description: `${client.first_name} is now an active client`,
+                        });
+                      } catch {
+                        toast.error('Failed to confirm payment');
+                      }
+                    }}
+                    disabled={confirmPayment.isPending}
+                    className="rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white gap-2"
+                  >
+                    <CheckCircle2 size={16} />
+                    {confirmPayment.isPending ? 'Confirming...' : 'Confirm Payment Received'}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
