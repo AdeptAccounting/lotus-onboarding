@@ -44,7 +44,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          const isClientDetailPage = /^\/clients\/[^/]+/.test(pathname);
+          const fromParam = isClientDetailPage && typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search).get('from')
+            : null;
+          let isActive: boolean;
+          if (isClientDetailPage) {
+            if (item.href === '/dashboard') {
+              isActive = fromParam === 'dashboard' || !fromParam;
+            } else if (item.href === '/clients') {
+              isActive = fromParam === 'clients';
+            } else {
+              isActive = false;
+            }
+          } else {
+            isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          }
           const Icon = item.icon;
           return (
             <Link

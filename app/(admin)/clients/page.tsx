@@ -81,7 +81,7 @@ export default function ClientsPage() {
             </thead>
             <tbody>
               {filtered.map((client) => (
-                <Link key={client.id} href={`/clients/${client.id}`} className="contents">
+                <Link key={client.id} href={`/clients/${client.id}?from=clients`} className="contents">
                   <tr className="border-b border-[#E8D8E0]/50 hover:bg-[#FDF8F5] cursor-pointer transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
