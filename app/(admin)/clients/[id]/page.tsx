@@ -914,11 +914,26 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
   const confirmPayment = useConfirmPayment();
   const updateClient = useUpdateClient();
   const savePaymentLink = useSavePaymentLink();
+  const addNote = useAddNote(clientId);
+  const deleteNote = useDeleteNote();
+  const addMessage = useAddMessage(clientId);
+  const deleteMessage = useDeleteMessage();
 
   const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentLinkUrl, setPaymentLinkUrl] = useState(client.payment_link_url ?? '');
   const [paymentLinkSaving, setPaymentLinkSaving] = useState(false);
+
+  // Notes & Messages state
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [messageOpen, setMessageOpen] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [notifyDialog, setNotifyDialog] = useState<{
+    open: boolean;
+    updateType: 'message' | 'document' | 'payment_link';
+    preview?: string;
+  }>({ open: false, updateType: 'message' });
 
   // Send Reminder state
   const [reminderSending, setReminderSending] = useState(false);
@@ -1269,6 +1284,199 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
               </CardContent>
             </Card>
           )}
+
+          {/* ── Private Notes ── */}
+          <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
+                <StickyNote size={16} />
+                Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#8B7080] bg-amber-50/50 border border-amber-100 rounded-xl">
+                <StickyNote size={13} className="text-amber-500 flex-shrink-0" />
+                Private notes — only visible to you
+              </div>
+
+              {!noteOpen ? (
+                <button
+                  onClick={() => setNoteOpen(true)}
+                  className="flex items-center gap-2 text-sm text-[#8B7080] hover:text-[#6B3A5E] transition-colors"
+                >
+                  <Plus size={16} className="text-[#B5648A]" />
+                  Add a note
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <textarea
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    placeholder="Write a note about this client..."
+                    rows={3}
+                    className="w-full rounded-xl border border-[#E8D8E0] bg-[#FDF8F5] px-3 py-2.5 text-sm text-[#5C4A42] placeholder:text-[#C0A8B4] focus:outline-none focus:border-[#B5648A] resize-none"
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setNoteOpen(false); setNoteText(''); }}
+                      className="rounded-xl border-[#E8D8E0] text-[#8B7080] text-xs h-8"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        if (!noteText.trim()) return;
+                        try {
+                          await addNote.mutateAsync(noteText.trim());
+                          toast.success('Note added');
+                          setNoteText('');
+                          setNoteOpen(false);
+                        } catch {
+                          toast.error('Failed to add note');
+                        }
+                      }}
+                      disabled={!noteText.trim() || addNote.isPending}
+                      className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs h-8"
+                    >
+                      {addNote.isPending ? 'Saving...' : 'Save Note'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {(() => {
+                const notes = activity?.filter((e) => e.action === 'note_added') ?? [];
+                return notes.length > 0 ? (
+                  <div className="space-y-2 pt-1">
+                    {notes.map((note) => (
+                      <div key={note.id} className="p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">
+                              {(note.details as { note?: string })?.note ?? ''}
+                            </p>
+                            <p className="text-xs text-[#8B7080] mt-1.5">
+                              {new Date(note.created_at).toLocaleDateString('en-US', {
+                                month: 'short', day: 'numeric',
+                                hour: 'numeric', minute: '2-digit',
+                              })}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => deleteNote.mutateAsync({ noteId: note.id, clientId }).then(() => toast.success('Note deleted')).catch(() => toast.error('Failed to delete'))}
+                            className="p-1 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null;
+              })()}
+            </CardContent>
+          </Card>
+
+          {/* ── Public Messages ── */}
+          <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
+                <Send size={16} />
+                Messages
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#8B7080] bg-blue-50/50 border border-blue-100 rounded-xl">
+                <Send size={13} className="text-blue-500 flex-shrink-0" />
+                Messages are visible to the client in their portal
+              </div>
+
+              {!messageOpen ? (
+                <button
+                  onClick={() => setMessageOpen(true)}
+                  className="flex items-center gap-2 text-sm text-[#8B7080] hover:text-[#6B3A5E] transition-colors"
+                >
+                  <Plus size={16} className="text-[#B5648A]" />
+                  Write a message
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <textarea
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="Write a message to the client... (they will see this in their portal)"
+                    rows={3}
+                    className="w-full rounded-xl border border-[#E8D8E0] bg-[#FDF8F5] px-3 py-2.5 text-sm text-[#5C4A42] placeholder:text-[#C0A8B4] focus:outline-none focus:border-[#B5648A] resize-none"
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setMessageOpen(false); setMessageText(''); }}
+                      className="rounded-xl border-[#E8D8E0] text-[#8B7080] text-xs h-8"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        if (!messageText.trim()) return;
+                        try {
+                          await addMessage.mutateAsync(messageText.trim());
+                          toast.success('Message sent');
+                          const preview = messageText.trim().slice(0, 100);
+                          setMessageText('');
+                          setMessageOpen(false);
+                          setNotifyDialog({ open: true, updateType: 'message', preview });
+                        } catch {
+                          toast.error('Failed to send message');
+                        }
+                      }}
+                      disabled={!messageText.trim() || addMessage.isPending}
+                      className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs h-8 gap-1"
+                    >
+                      <Send size={12} />
+                      {addMessage.isPending ? 'Sending...' : 'Send Message'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {(() => {
+                const messages = activity?.filter((e) => e.action === 'message_sent') ?? [];
+                return messages.length > 0 ? (
+                  <div className="space-y-2 pt-1">
+                    {messages.map((msg) => (
+                      <div key={msg.id} className="p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">
+                              {(msg.details as { message?: string })?.message ?? ''}
+                            </p>
+                            <p className="text-xs text-[#8B7080] mt-1.5">
+                              {new Date(msg.created_at).toLocaleDateString('en-US', {
+                                month: 'short', day: 'numeric',
+                                hour: 'numeric', minute: '2-digit',
+                              })}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => deleteMessage.mutateAsync({ messageId: msg.id, clientId }).then(() => toast.success('Message deleted')).catch(() => toast.error('Failed to delete'))}
+                            className="p-1 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null;
+              })()}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar */}
@@ -1418,6 +1626,16 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
           })()}
         </div>
       </div>
+
+      {/* Notify Client Dialog */}
+      <NotifyClientDialog
+        open={notifyDialog.open}
+        onOpenChange={(open) => setNotifyDialog((d) => ({ ...d, open }))}
+        clientId={clientId}
+        clientName={`${client.first_name} ${client.last_name}`}
+        updateType={notifyDialog.updateType}
+        preview={notifyDialog.preview}
+      />
     </div>
   );
 }
