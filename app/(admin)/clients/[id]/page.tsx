@@ -16,6 +16,7 @@ import {
   useSavePaymentLink,
   useUploadedDocuments,
   useToggleDocumentVisibility,
+  useMarkMessagesRead,
 } from '@/hooks/useClients';
 import { createClient as createSupabaseClient } from '@/lib/supabase/client';
 import { PipelineStepper } from '@/components/admin/pipeline-stepper';
@@ -972,6 +973,7 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
   const deleteNote = useDeleteNote();
   const addMessage = useAddMessage(clientId);
   const deleteMessage = useDeleteMessage();
+  const markRead = useMarkMessagesRead(clientId);
   const { data: uploadedDocs } = useUploadedDocuments(clientId);
   const toggleVisibility = useToggleDocumentVisibility();
 
@@ -1318,7 +1320,7 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
             </Card>
           )}
 
-          {/* ── 1. Messages ── */}
+          {/* ── 1. Messages (Conversation Thread) ── */}
           <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
@@ -1327,45 +1329,90 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#8B7080] bg-blue-50/50 border border-blue-100 rounded-xl">
-                <Send size={13} className="text-blue-500 flex-shrink-0" />
-                Messages are visible to the client in their portal
-              </div>
-              {!messageOpen ? (
-                <button onClick={() => setMessageOpen(true)} className="flex items-center gap-2 text-sm text-[#8B7080] hover:text-[#6B3A5E] transition-colors">
-                  <Plus size={16} className="text-[#B5648A]" />
-                  Write a message
-                </button>
-              ) : (
-                <div className="space-y-3">
-                  <textarea value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Write a message to the client... (they will see this in their portal)" rows={3} className="w-full rounded-xl border border-[#E8D8E0] bg-[#FDF8F5] px-3 py-2.5 text-sm text-[#5C4A42] placeholder:text-[#C0A8B4] focus:outline-none focus:border-[#B5648A] resize-none" />
-                  <div className="flex gap-2 justify-end">
-                    <Button variant="outline" size="sm" onClick={() => { setMessageOpen(false); setMessageText(''); }} className="rounded-xl border-[#E8D8E0] text-[#8B7080] text-xs h-8">Cancel</Button>
-                    <Button size="sm" onClick={async () => { if (!messageText.trim()) return; try { await addMessage.mutateAsync(messageText.trim()); toast.success('Message sent'); const preview = messageText.trim().slice(0, 100); setMessageText(''); setMessageOpen(false); setNotifyDialog({ open: true, updateType: 'message', preview }); } catch { toast.error('Failed to send message'); } }} disabled={!messageText.trim() || addMessage.isPending} className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs h-8 gap-1">
-                      <Send size={12} />
-                      {addMessage.isPending ? 'Sending...' : 'Send Message'}
-                    </Button>
-                  </div>
-                </div>
-              )}
+              {/* Conversation Thread */}
               {(() => {
-                const messages = activity?.filter((e) => e.action === 'message_sent') ?? [];
+                const messages = [...(activity?.filter((e) => e.action === 'message_sent') ?? [])].sort(
+                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
                 return messages.length > 0 ? (
-                  <div className="space-y-2 pt-1">
-                    {messages.map((msg) => (
-                      <div key={msg.id} className="p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">{(msg.details as { message?: string })?.message ?? ''}</p>
-                            <p className="text-xs text-[#8B7080] mt-1.5">{new Date(msg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {messages.map((msg) => {
+                      const isFromClient = msg.actor === 'client';
+                      return (
+                        <div key={msg.id} className={`flex ${isFromClient ? 'justify-start' : 'justify-end'}`}>
+                          <div className={`max-w-[85%] group relative`}>
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              {isFromClient && (
+                                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#D4A0BB] to-[#B5648A] flex items-center justify-center">
+                                  <span className="text-white text-[8px] font-semibold">{client.first_name[0]}{client.last_name[0]}</span>
+                                </div>
+                              )}
+                              <span className="text-[10px] text-[#8B7080]">
+                                {isFromClient ? `${client.first_name}` : 'You'} &middot; {new Date(msg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                              isFromClient
+                                ? 'bg-white border border-[#E8D8E0]/50 text-[#5C4A42] rounded-bl-md'
+                                : 'bg-gradient-to-r from-[#B5648A]/10 to-[#9B4D73]/10 text-[#5C4A42] rounded-br-md'
+                            }`}>
+                              <p className="whitespace-pre-wrap">{(msg.details as { message?: string })?.message ?? ''}</p>
+                            </div>
+                            {!isFromClient && (
+                              <button
+                                onClick={() => deleteMessage.mutateAsync({ messageId: msg.id, clientId }).then(() => toast.success('Deleted')).catch(() => toast.error('Failed'))}
+                                className="absolute -right-6 top-4 p-1 rounded-lg text-[#C0A8B4] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            )}
                           </div>
-                          <button onClick={() => deleteMessage.mutateAsync({ messageId: msg.id, clientId }).then(() => toast.success('Message deleted')).catch(() => toast.error('Failed to delete'))} className="p-1 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"><Trash2 size={13} /></button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : null;
               })()}
+
+              {/* Reply Input */}
+              <div className="flex gap-2 items-end pt-1">
+                <textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!messageText.trim() || addMessage.isPending) return;
+                      addMessage.mutateAsync(messageText.trim()).then(() => {
+                        toast.success('Message sent');
+                        const preview = messageText.trim().slice(0, 100);
+                        setMessageText('');
+                        setNotifyDialog({ open: true, updateType: 'message', preview });
+                      }).catch(() => toast.error('Failed'));
+                    }
+                  }}
+                  placeholder="Type a message..."
+                  rows={1}
+                  className="flex-1 rounded-xl border border-[#E8D8E0] bg-[#FDF8F5] px-3 py-2 text-sm text-[#5C4A42] placeholder:text-[#C0A8B4] focus:outline-none focus:border-[#B5648A] resize-none"
+                />
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    if (!messageText.trim()) return;
+                    try {
+                      await addMessage.mutateAsync(messageText.trim());
+                      toast.success('Message sent');
+                      const preview = messageText.trim().slice(0, 100);
+                      setMessageText('');
+                      setNotifyDialog({ open: true, updateType: 'message', preview });
+                    } catch { toast.error('Failed'); }
+                  }}
+                  disabled={!messageText.trim() || addMessage.isPending}
+                  className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white h-9 px-3"
+                >
+                  <Send size={14} />
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -1482,7 +1529,7 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                             <div className="w-8 h-8 rounded-lg bg-[#F5EDF1] flex items-center justify-center flex-shrink-0"><FileText size={14} className="text-[#B5648A]" /></div>
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-[#5C4A42] truncate">{doc.file_name}</p>
-                              <p className="text-xs text-[#8B7080]">{new Date(doc.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                              <p className="text-xs text-[#8B7080]">{doc.uploaded_by === 'client' ? 'Uploaded by client' : 'Uploaded by you'} &middot; {new Date(doc.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-1 ml-4 flex-shrink-0">

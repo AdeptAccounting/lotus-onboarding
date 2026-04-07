@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Users, Settings, LayoutDashboard, LogOut, Menu, X, HelpCircle } from 'lucide-react';
 import { useState } from 'react';
+import { NotificationBell } from '@/components/admin/notification-bell';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -78,6 +79,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           );
         })}
       </nav>
+
+      <div className="px-4 pb-2">
+        <div className="flex items-center justify-between px-4 py-2">
+          <span className="text-xs font-medium text-[#8B7080]">Notifications</span>
+          <NotificationBell />
+        </div>
+      </div>
 
       <div className="p-4 border-t border-[#E8D8E0]">
         <div className="flex items-center gap-3 px-4 py-2 mb-2">

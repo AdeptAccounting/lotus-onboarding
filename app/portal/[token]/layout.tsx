@@ -98,7 +98,7 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FDF8F5] via-white to-[#F5EDF1]">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#FDF8F5] via-white to-[#F5EDF1]">
       {/* Header */}
       <header className="border-b border-[#E8D8E0]/50 bg-white/80 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -152,7 +152,7 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
       </header>
 
       {/* Content */}
-      <main className="max-w-3xl mx-auto px-6 py-8">
+      <main className="max-w-3xl mx-auto px-6 py-8 flex-1">
         {children}
       </main>
 

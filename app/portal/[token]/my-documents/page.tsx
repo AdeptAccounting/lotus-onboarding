@@ -1,8 +1,10 @@
 'use client';
 
-import { use } from 'react';
-import { usePortalClient, usePortalSignatures, usePortalUploadedDocuments } from '@/hooks/usePortal';
-import { Sparkles, FileText, CheckCircle2, Download } from 'lucide-react';
+import { use, useRef, useState } from 'react';
+import { usePortalClient, usePortalSignatures, usePortalUploadedDocuments, usePortalUploadDocument } from '@/hooks/usePortal';
+import { Sparkles, FileText, CheckCircle2, Download, Upload, Plus, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
 export default function PortalDocumentsPage({ params }: { params: Promise<{ token: string }> }) {
@@ -10,6 +12,9 @@ export default function PortalDocumentsPage({ params }: { params: Promise<{ toke
   const { data: client } = usePortalClient(token);
   const { data: signatures, isLoading: sigsLoading } = usePortalSignatures(token);
   const { data: uploadedDocs, isLoading: docsLoading } = usePortalUploadedDocuments(token);
+  const uploadDoc = usePortalUploadDocument(token);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   if (!client || sigsLoading || docsLoading) {
     return (
@@ -19,10 +24,46 @@ export default function PortalDocumentsPage({ params }: { params: Promise<{ toke
     );
   }
 
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      await uploadDoc.mutateAsync(file);
+      toast.success('Document uploaded');
+    } catch {
+      toast.error('Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-      <h1 className="text-xl font-semibold text-[#6B3A5E] mb-2">My Documents</h1>
-      <p className="text-sm text-[#8B7080] mb-6">Your signed documents and shared files.</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-semibold text-[#6B3A5E]">My Documents</h1>
+          <p className="text-sm text-[#8B7080]">Your signed documents and shared files.</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="rounded-xl border-[#E8D8E0] text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] gap-1.5 text-xs h-8"
+        >
+          {uploading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+          {uploading ? 'Uploading...' : 'Upload'}
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleUpload(file);
+            e.target.value = '';
+          }}
+        />
+      </div>
 
       {/* Signed Onboarding Documents */}
       {signatures && signatures.length > 0 && (
@@ -55,7 +96,7 @@ export default function PortalDocumentsPage({ params }: { params: Promise<{ toke
         </div>
       )}
 
-      {/* Uploaded Documents */}
+      {/* Shared / Uploaded Documents */}
       {uploadedDocs && uploadedDocs.length > 0 && (
         <div className="mb-6">
           <h2 className="text-sm font-semibold text-[#6B3A5E] mb-3">Shared Documents</h2>
@@ -104,6 +145,12 @@ export default function PortalDocumentsPage({ params }: { params: Promise<{ toke
           </div>
           <p className="text-[#6B3A5E] font-medium">No documents yet</p>
           <p className="text-sm text-[#8B7080] mt-1">Documents will appear here when shared with you.</p>
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="mt-4 text-sm text-[#B5648A] hover:underline"
+          >
+            Or upload your own document
+          </button>
         </div>
       )}
     </motion.div>

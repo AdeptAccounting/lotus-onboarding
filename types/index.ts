@@ -97,6 +97,7 @@ export interface UploadedDocument {
   file_name: string;
   storage_path: string;
   visible_to_client: boolean;
+  uploaded_by: 'admin' | 'client';
   uploaded_at: string;
 }
 

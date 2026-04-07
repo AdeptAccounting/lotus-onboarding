@@ -205,11 +205,12 @@ const SECTIONS = [
           <div className="p-4 rounded-xl border border-[#E8D8E0]/50 bg-white">
             <div className="flex items-center gap-2 mb-2">
               <MessageSquare size={16} className="text-[#B5648A]" />
-              <span className="font-medium text-[#6B3A5E] text-sm">Messages Tab (Client-Visible)</span>
+              <span className="font-medium text-[#6B3A5E] text-sm">Messages (Two-Way Chat)</span>
             </div>
             <p className="text-xs text-[#8B7080]">
-              Send messages to the client that they can see in their portal. After sending a message, you&apos;ll
-              be asked if you want to notify them via email. This is a one-way communication channel.
+              A real-time conversation thread with the client. You send messages, and clients can reply from their portal.
+              You&apos;ll see a notification bell when clients send new messages. You can share payment links and
+              other info directly in the chat.
             </p>
           </div>
         </div>
@@ -322,7 +323,7 @@ const SECTIONS = [
             <ul className="text-xs text-[#8B7080] space-y-1.5 list-disc list-inside">
               <li><strong>Home</strong> with onboarding progress (if still onboarding) + quick links</li>
               <li><strong>Documents</strong> showing their signed intake docs + any files you&apos;ve shared (toggled visible)</li>
-              <li><strong>Messages</strong> showing any messages you send from the Messages tab</li>
+              <li><strong>Messages</strong> two-way chat where clients can message you and you can reply</li>
               <li><strong>Payment</strong> with a &quot;Pay Now&quot; button (only visible if you set a payment link)</li>
             </ul>
           </div>

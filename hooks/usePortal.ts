@@ -1,7 +1,7 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { OnboardingClient, OnboardingDocument, OnboardingSignature, ActivityLogEntry } from '@/types';
 
 function getSupabase() {
@@ -135,5 +135,72 @@ export function usePortalSignatures(token: string) {
       return data as OnboardingSignature[];
     },
     enabled: !!token,
+  });
+}
+
+export function usePortalSendMessage(token: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (message: string) => {
+      const supabase = getSupabase();
+      const { data: client } = await supabase
+        .from('onboarding_clients')
+        .select('id')
+        .eq('access_token', token)
+        .single();
+      if (!client) throw new Error('Client not found');
+
+      const { data, error } = await supabase
+        .from('onboarding_activity_log')
+        .insert({
+          client_id: client.id,
+          action: 'message_sent',
+          details: { message },
+          actor: 'client',
+          read_by_admin: false,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as ActivityLogEntry;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal-messages', token] });
+    },
+  });
+}
+
+export function usePortalUploadDocument(token: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const supabase = getSupabase();
+      const { data: client } = await supabase
+        .from('onboarding_clients')
+        .select('id')
+        .eq('access_token', token)
+        .single();
+      if (!client) throw new Error('Client not found');
+
+      const path = `${client.id}/${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('client-documents')
+        .upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { error: dbError } = await supabase
+        .from('onboarding_uploaded_documents')
+        .insert({
+          client_id: client.id,
+          file_name: file.name,
+          storage_path: path,
+          visible_to_client: true,
+          uploaded_by: 'client',
+        });
+      if (dbError) throw dbError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal-uploaded-docs', token] });
+    },
   });
 }

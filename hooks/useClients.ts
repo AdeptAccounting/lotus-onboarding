@@ -438,6 +438,26 @@ export function useIntakeResponse(clientId: string, documentId: string) {
   });
 }
 
+export function useMarkMessagesRead(clientId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await getSupabase()
+        .from('onboarding_activity_log')
+        .update({ read_by_admin: true })
+        .eq('client_id', clientId)
+        .eq('action', 'message_sent')
+        .eq('actor', 'client')
+        .eq('read_by_admin', false);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
 export function useConfirmPayment() {
   const queryClient = useQueryClient();
   return useMutation({
