@@ -4,15 +4,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Settings, LayoutDashboard, LogOut, Menu, X, HelpCircle, Bell } from 'lucide-react';
+import { Users, Settings, LayoutDashboard, LogOut, Menu, X, HelpCircle } from 'lucide-react';
 import { useState } from 'react';
 import { NotificationBell } from '@/components/admin/notification-bell';
-import { useUnreadCount } from '@/hooks/useNotifications';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/clients', label: 'Clients', icon: Users },
-  { href: '#notifications', label: 'Notifications', icon: Bell, isNotifications: true },
   { href: '/guide', label: 'How It Works', icon: HelpCircle },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -47,19 +45,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
-          // Notifications renders inline bell instead of a link
-          if ('isNotifications' in item && item.isNotifications) {
-            return (
-              <div key={item.href} className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium text-[#8B7080]">
-                <div className="flex items-center gap-3">
-                  <Bell size={18} />
-                  {item.label}
-                </div>
-                <NotificationBell />
-              </div>
-            );
-          }
-
           const isClientDetailPage = /^\/clients\/[^/]+/.test(pathname);
           const fromParam = isClientDetailPage && typeof window !== 'undefined'
             ? new URLSearchParams(window.location.search).get('from')
@@ -151,18 +136,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto min-w-0">
-        {/* Mobile Top Bar */}
-        <div className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-white border-b border-[#E8D8E0] md:hidden">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-xl text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
-          >
-            <Menu size={20} />
-          </button>
-          <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Lotus Program" width={28} height={28} />
-            <span className="text-sm font-semibold text-[#6B3A5E]">The Lotus Program</span>
+        {/* Top Bar */}
+        <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-white border-b border-[#E8D8E0]">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-xl text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors md:hidden"
+            >
+              <Menu size={20} />
+            </button>
+            <div className="flex items-center gap-2 md:hidden">
+              <Image src="/logo.png" alt="Lotus Program" width={28} height={28} />
+              <span className="text-sm font-semibold text-[#6B3A5E]">The Lotus Program</span>
+            </div>
           </div>
+          <NotificationBell />
         </div>
         {children}
       </main>
