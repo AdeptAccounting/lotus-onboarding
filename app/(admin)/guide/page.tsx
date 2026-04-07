@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   UserPlus, FileText, CheckCircle2, Send, PenTool, CreditCard, Users,
-  ArrowRight, Mail, Upload, StickyNote, Settings, LayoutDashboard, Sparkles
+  ArrowRight, Mail, Upload, StickyNote, Settings, LayoutDashboard, Sparkles, Eye, Bell
 } from 'lucide-react';
 
 const SECTIONS = [
@@ -67,6 +67,19 @@ const SECTIONS = [
             <div>
               <p className="font-medium text-[#5C4A42] text-sm">Client fills out and signs their intake documents</p>
               <p className="text-xs text-[#8B7080]">They open the link from the email, verify their email, then fill out the intake form and sign all documents. You get a notification email when they submit.</p>
+              <div className="mt-2 flex gap-2 p-2.5 rounded-xl bg-[#F5EDF1] border border-[#E8D8E0]/60">
+                <Eye size={13} className="text-[#B5648A] flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-[#8B7080]">
+                  You can track when your client opens their portal and how many times they&apos;ve visited.
+                  This information appears on the client&apos;s page under <strong className="text-[#6B3A5E]">Portal Activity</strong>.
+                </p>
+              </div>
+              <div className="mt-2 flex gap-2 p-2.5 rounded-xl bg-[#F5EDF1] border border-[#E8D8E0]/60">
+                <Bell size={13} className="text-[#B5648A] flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-[#8B7080]">
+                  If a client hasn&apos;t completed a step, click <strong className="text-[#6B3A5E]">Send Reminder</strong> on their profile to send them a friendly nudge email.
+                </p>
+              </div>
             </div>
           </li>
           <li className="flex gap-3">
@@ -251,6 +264,10 @@ const SECTIONS = [
           <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
             <ArrowRight size={14} className="text-[#B5648A] flex-shrink-0" />
             <p className="text-xs text-[#5C4A42]"><strong>Notification to you</strong> when a client submits their intake documents</p>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
+            <Bell size={14} className="text-[#B5648A] flex-shrink-0" />
+            <p className="text-xs text-[#5C4A42]"><strong>Reminder email</strong> sent when you click &quot;Send Reminder&quot; on a client&apos;s profile, nudging them to complete their current step</p>
           </div>
         </div>
       </div>

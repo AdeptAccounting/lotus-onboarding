@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import { LogOut } from 'lucide-react';
 
 interface PortalLayoutProps {
@@ -30,6 +31,37 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
       router.replace(`/portal/${token}/verify`);
     } else {
       setVerified(true);
+
+      // Log a portal_visit if we haven't logged one in the last 30 minutes
+      const lastVisitKey = `portal_last_visit_${token}`;
+      const lastVisit = sessionStorage.getItem(lastVisitKey);
+      const now = Date.now();
+      const thirtyMinutes = 30 * 60 * 1000;
+
+      if (!lastVisit || now - parseInt(lastVisit, 10) > thirtyMinutes) {
+        sessionStorage.setItem(lastVisitKey, String(now));
+
+        // Fire-and-forget: fetch client by token, then log the visit
+        const supabase = createClient();
+        supabase
+          .from('onboarding_clients')
+          .select('id')
+          .eq('access_token', token)
+          .single()
+          .then(({ data: client }) => {
+            if (client) {
+              supabase.from('onboarding_activity_log').insert({
+                client_id: client.id,
+                action: 'portal_visit',
+                details: {
+                  timestamp: new Date().toISOString(),
+                  user_agent: navigator.userAgent,
+                },
+                actor: 'client',
+              });
+            }
+          });
+      }
     }
   }, [token, isVerifyPage, router]);
 

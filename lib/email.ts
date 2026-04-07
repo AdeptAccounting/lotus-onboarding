@@ -180,6 +180,48 @@ export function contractReadyEmailHtml(clientName: string, portalUrl: string, se
   `;
 }
 
+export function reminderEmailHtml(
+  clientName: string,
+  portalUrl: string,
+  stage: string,
+  message: string
+): string {
+  const firstName = clientName.split(' ')[0];
+  return `
+    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; background: #FDF8F5; padding: 40px 30px; border-radius: 16px;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: #6B3A5E; font-size: 24px; margin: 0;">The Lotus Program Experience</h1>
+        <p style="color: #B5648A; font-size: 14px; margin-top: 4px;">Client Onboarding Portal</p>
+      </div>
+
+      <p style="color: #5C4A42; font-size: 16px; line-height: 1.6;">
+        Hi ${firstName},
+      </p>
+
+      <p style="color: #5C4A42; font-size: 16px; line-height: 1.6;">
+        This is a friendly reminder that ${message}. When you're ready, you can access your portal below to continue.
+      </p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${portalUrl}" style="display: inline-block; background: linear-gradient(135deg, #B5648A, #9B4D73); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600;">
+          Access Your Portal
+        </a>
+      </div>
+
+      <p style="color: #8B7080; font-size: 14px; line-height: 1.6;">
+        If you have any questions or need assistance, please don't hesitate to reach out. We're here to support you every step of the way.
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #E8D8E0; margin: 30px 0;" />
+
+      <p style="color: #8B7080; font-size: 12px; text-align: center;">
+        With love and care,<br />
+        The Lotus Program Experience
+      </p>
+    </div>
+  `;
+}
+
 export function packetCompleteNotificationHtml(clientName: string, adminUrl: string): string {
   return `
     <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; background: #FDF8F5; padding: 40px 30px; border-radius: 16px;">

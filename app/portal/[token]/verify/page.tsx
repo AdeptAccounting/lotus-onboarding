@@ -46,6 +46,17 @@ export default function VerifyPage({ params }: { params: Promise<{ token: string
       // Store verification flag in sessionStorage
       sessionStorage.setItem(`portal_verified_${token}`, '1');
 
+      // Log the portal visit
+      await supabase.from('onboarding_activity_log').insert({
+        client_id: client.id,
+        action: 'portal_visit',
+        details: {
+          timestamp: new Date().toISOString(),
+          user_agent: navigator.userAgent,
+        },
+        actor: 'client',
+      });
+
       router.replace(`/portal/${token}`);
     } catch {
       setError('Something went wrong. Please try again.');

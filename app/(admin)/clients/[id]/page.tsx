@@ -45,6 +45,9 @@ import {
   Trash2,
   Download,
   Plus,
+  Eye,
+  Bell,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -765,6 +768,29 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
   const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
 
+  // Send Reminder state
+  const [reminderSending, setReminderSending] = useState(false);
+  const [reminderSent, setReminderSent] = useState(false);
+
+  const handleSendReminder = async () => {
+    setReminderSending(true);
+    try {
+      const res = await fetch('/api/email/reminder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: client.id }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      toast.success(`Reminder sent to ${client.email}`);
+      setReminderSent(true);
+      setTimeout(() => setReminderSent(false), 3000);
+    } catch {
+      toast.error('Failed to send reminder');
+    } finally {
+      setReminderSending(false);
+    }
+  };
+
   const handleApprove = async () => {
     try {
       await approvePacket1.mutateAsync(client.id);
@@ -1032,6 +1058,7 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
         <div className="space-y-6">
           <EditableClientInfo clientId={clientId} />
 
+          {/* Portal Link */}
           <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
             <CardHeader>
               <CardTitle className="text-[#6B3A5E] text-base">Portal Link</CardTitle>
@@ -1054,8 +1081,124 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
               >
                 Copy Link
               </Button>
+
+              {/* Send Reminder button */}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={reminderSending || reminderSent}
+                onClick={handleSendReminder}
+                className="mt-2 w-full rounded-xl border-[#E8D8E0] text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] text-xs gap-1.5"
+              >
+                {reminderSending ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    Sending...
+                  </>
+                ) : reminderSent ? (
+                  <>
+                    <CheckCircle2 size={13} className="text-green-600" />
+                    Sent!
+                  </>
+                ) : (
+                  <>
+                    <Bell size={13} />
+                    Send Reminder
+                  </>
+                )}
+              </Button>
             </CardContent>
           </Card>
+
+          {/* Portal Activity */}
+          {(() => {
+            const portalVisits = (activity ?? []).filter((e) => e.action === 'portal_visit');
+            const lastVisit = portalVisits[0];
+            const recentVisits = portalVisits.slice(0, 5);
+            const totalSigs = signatures?.length ?? 0;
+
+            const formatVisitDate = (iso: string) =>
+              new Date(iso).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              });
+
+            return (
+              <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
+                    <Eye size={16} />
+                    Portal Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Stats row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2.5 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/60 text-center">
+                      <p className="text-lg font-semibold text-[#6B3A5E]">{portalVisits.length}</p>
+                      <p className="text-xs text-[#8B7080]">visits</p>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/60 text-center">
+                      <p className="text-xs font-medium text-[#6B3A5E] leading-tight">
+                        {lastVisit
+                          ? new Date(lastVisit.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                          : 'Never'}
+                      </p>
+                      <p className="text-xs text-[#8B7080]">last visit</p>
+                    </div>
+                  </div>
+
+                  {/* Recent visits timeline */}
+                  {recentVisits.length > 0 ? (
+                    <div>
+                      <p className="text-xs font-medium text-[#8B7080] mb-2">Recent Visits</p>
+                      <div className="space-y-1.5">
+                        {recentVisits.map((visit) => (
+                          <div
+                            key={visit.id}
+                            className="flex items-center gap-2 text-xs text-[#5C4A42]"
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#B5648A] flex-shrink-0" />
+                            <span>{formatVisitDate(visit.created_at)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[#8B7080] text-center py-2">No portal visits yet</p>
+                  )}
+
+                  {/* Documents signed */}
+                  <div>
+                    <p className="text-xs font-medium text-[#8B7080] mb-2">
+                      Documents Signed ({totalSigs})
+                    </p>
+                    {totalSigs === 0 ? (
+                      <p className="text-xs text-[#C0A8B4] italic">No documents signed yet</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {signatures!.map((sig) => (
+                          <div key={sig.id} className="flex items-center gap-2 text-xs">
+                            <CheckCircle2 size={13} className="text-green-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-[#5C4A42] truncate">{sig.document?.name}</p>
+                              <p className="text-[#8B7080]">
+                                {new Date(sig.signed_at).toLocaleDateString('en-US', {
+                                  month: 'short', day: 'numeric',
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
         </div>
       </div>
     </div>
