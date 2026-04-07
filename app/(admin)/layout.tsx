@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Settings, LayoutDashboard, LogOut, Menu, X, HelpCircle } from 'lucide-react';
+import { Users, Settings, LayoutDashboard, LogOut, Menu, X, HelpCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useState } from 'react';
 import { NotificationBell } from '@/components/admin/notification-bell';
 
@@ -19,6 +19,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   if (loading) {
     return (
@@ -105,8 +106,43 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex h-screen bg-[#FDF8F5]">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 border-r border-[#E8D8E0] bg-white flex-col flex-shrink-0">
-        <SidebarContent />
+      <aside className={`hidden md:flex border-r border-[#E8D8E0] bg-white flex-col flex-shrink-0 transition-all duration-300 ${sidebarCollapsed ? 'w-16' : 'w-64'}`}>
+        {sidebarCollapsed ? (
+          <div className="flex flex-col items-center py-4 flex-1">
+            <Link href="/dashboard" className="mb-6">
+              <Image src="/logo.png" alt="Lotus" width={32} height={32} />
+            </Link>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`p-3 rounded-xl mb-1 transition-colors ${isActive ? 'bg-[#B5648A]/10 text-[#6B3A5E]' : 'text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E]'}`}
+                  title={item.label}
+                >
+                  <Icon size={18} />
+                </Link>
+              );
+            })}
+            <div className="mt-auto">
+              <button onClick={() => setSidebarCollapsed(false)} className="p-3 rounded-xl text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E]" title="Expand sidebar">
+                <PanelLeftOpen size={18} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <SidebarContent />
+            <div className="px-4 pb-3">
+              <button onClick={() => setSidebarCollapsed(true)} className="flex items-center gap-3 px-4 py-2 rounded-xl text-sm text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] w-full transition-colors">
+                <PanelLeftClose size={18} />
+                Collapse
+              </button>
+            </div>
+          </>
+        )}
       </aside>
 
       {/* Mobile Backdrop */}

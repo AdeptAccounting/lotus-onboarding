@@ -2,12 +2,15 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useNotifications, useUnreadCount } from '@/hooks/useNotifications';
+import { createClient } from '@/lib/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { Bell, MessageSquare, FileText } from 'lucide-react';
 import Link from 'next/link';
 
 export function NotificationBell() {
   const { data: notifications } = useNotifications();
   const { data: unreadCount } = useUnreadCount();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -55,7 +58,22 @@ export function NotificationBell() {
                 <Link
                   key={item.id}
                   href={`/clients/${item.clientId}?from=dashboard`}
-                  onClick={() => setOpen(false)}
+                  onClick={async () => {
+                    setOpen(false);
+                    if (item.type === 'message') {
+                      const supabase = createClient();
+                      await supabase
+                        .from('onboarding_activity_log')
+                        .update({ read_by_admin: true })
+                        .eq('client_id', item.clientId)
+                        .eq('action', 'message_sent')
+                        .eq('actor', 'client')
+                        .eq('read_by_admin', false);
+                      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+                      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+                      queryClient.invalidateQueries({ queryKey: ['activity', item.clientId] });
+                    }
+                  }}
                   className="flex items-start gap-3 px-4 py-3 hover:bg-[#FDF8F5] transition-colors border-b border-[#E8D8E0]/30 last:border-0"
                 >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${

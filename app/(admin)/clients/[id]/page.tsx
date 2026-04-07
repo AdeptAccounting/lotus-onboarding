@@ -1336,7 +1336,7 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                   (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
                 );
                 return messages.length > 0 ? (
-                  <div className="space-y-2 overflow-x-hidden">
+                  <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-hidden">
                     {messages.map((msg) => {
                       const isFromClient = msg.actor === 'client';
                       return (
