@@ -63,7 +63,7 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ token
             const isClient = msg.actor === 'client';
             return (
               <div key={msg.id} className={`flex ${isClient ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] ${isClient ? 'order-2' : ''}`}>
+                <div className={`max-w-[90%] sm:max-w-[75%] ${isClient ? 'order-2' : ''}`}>
                   <div className="flex items-center gap-2 mb-1">
                     {!isClient && (
                       <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#D4A0BB] to-[#B5648A] flex items-center justify-center">

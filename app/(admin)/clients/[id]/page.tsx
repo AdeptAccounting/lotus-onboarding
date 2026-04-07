@@ -338,10 +338,8 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
     try {
       await addMessage.mutateAsync(messageText.trim());
       toast.success('Message sent');
-      const preview = messageText.trim().slice(0, 100);
       setMessageText('');
       setMessageOpen(false);
-      setNotifyDialog({ open: true, updateType: 'message', preview });
     } catch {
       toast.error('Failed to send message');
     }
@@ -1322,11 +1320,14 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
 
           {/* ── 1. Messages (Conversation Thread) ── */}
           <Card className="rounded-2xl border-[#E8D8E0]/50 shadow-sm">
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-2">
               <CardTitle className="text-[#6B3A5E] text-base flex items-center gap-2">
                 <Send size={16} />
                 Messages
               </CardTitle>
+              <p className="text-xs text-[#8B7080] mt-1">
+                Your direct communication with this client. Messages you send here are visible in their portal, and they can reply back. This is your main channel for updates, reminders, and sharing information.
+              </p>
             </CardHeader>
             <CardContent className="space-y-3">
               {/* Conversation Thread */}
@@ -1385,9 +1386,7 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                       if (!messageText.trim() || addMessage.isPending) return;
                       addMessage.mutateAsync(messageText.trim()).then(() => {
                         toast.success('Message sent');
-                        const preview = messageText.trim().slice(0, 100);
                         setMessageText('');
-                        setNotifyDialog({ open: true, updateType: 'message', preview });
                       }).catch(() => toast.error('Failed'));
                     }
                   }}
@@ -1402,9 +1401,7 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                     try {
                       await addMessage.mutateAsync(messageText.trim());
                       toast.success('Message sent');
-                      const preview = messageText.trim().slice(0, 100);
                       setMessageText('');
-                      setNotifyDialog({ open: true, updateType: 'message', preview });
                     } catch { toast.error('Failed'); }
                   }}
                   disabled={!messageText.trim() || addMessage.isPending}
