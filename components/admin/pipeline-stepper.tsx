@@ -11,7 +11,7 @@ export function PipelineStepper({ currentStatus }: PipelineStepperProps) {
   const currentIndex = PIPELINE_STEPS.findIndex((s) => s.status === currentStatus);
 
   return (
-    <div className="flex items-center gap-1 overflow-x-auto pb-2">
+    <div className="flex items-center gap-1 overflow-x-auto py-2 px-1">
       {PIPELINE_STEPS.map((step, index) => {
         const isCompleted = index < currentIndex;
         const isCurrent = index === currentIndex;
