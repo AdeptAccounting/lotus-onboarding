@@ -66,6 +66,7 @@ export interface OnboardingSignature {
 export interface OnboardingIntakeResponse {
   id: string;
   client_id: string;
+  document_id: string;
   form_data: Record<string, string>;
   submitted_at: string;
 }
