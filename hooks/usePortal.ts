@@ -35,7 +35,7 @@ export function usePortalDocuments(token: string, documentType?: string) {
         .eq('access_token', token)
         .single();
 
-      let query = supabase
+      let query = getSupabase()
         .from('onboarding_documents')
         .select('*')
         .order('sort_order', { ascending: true });
