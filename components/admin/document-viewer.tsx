@@ -88,98 +88,114 @@ function parseLine(rawHtml: string, keyCounter: Record<string, number>): ParsedF
 
 // ─── Read-only rendered document ─────────────────────────────────────────────
 
+/** Replace underscores and checkbox symbols in raw HTML with filled values inline. */
+function fillHtmlInline(rawHtml: string, formData: Record<string, string>): string {
+  const paragraphs = splitIntoParagraphs(rawHtml);
+  const keyCounter: Record<string, number> = {};
+  const fields = paragraphs.map((p) => parseLine(p, keyCounter));
+
+  const filledParagraphs = fields.map((field) => {
+    if (field.type === 'plain') return `<p>${field.rawHtml}</p>`;
+
+    const value = formData[field.key] || '';
+    let html = field.rawHtml;
+
+    if (field.type === 'text') {
+      // Replace underscores with the filled value styled inline
+      const displayValue = value || '<em style="color:#C0A8B4">Not provided</em>';
+      html = html.replace(
+        /_{3,}/g,
+        `<span style="border-bottom:1px solid #6B3A5E;padding:0 4px;font-weight:500;color:#6B3A5E">${displayValue}</span>`
+      );
+      return `<p>${html}</p>`;
+    }
+
+    if (field.type === 'yes_no') {
+      // Replace ☐ Yes ☐ No with checked/unchecked indicators
+      html = html.replace(/☐\s*Yes/g, value === 'Yes' ? '☑ Yes' : '☐ Yes');
+      html = html.replace(/☐\s*No/g, value === 'No' ? '☑ No' : '☐ No');
+      return `<p>${html}</p>`;
+    }
+
+    if (field.type === 'multi_choice') {
+      const selected = value ? value.split('|') : [];
+      // Replace each ☐ Option with ☑/☐ based on selection
+      const stripped = html.replace(/<[^>]+>/g, '');
+      const parts = stripped.split('☐').filter(Boolean);
+      parts.forEach((part) => {
+        const optionText = part.replace(/_{3,}.*$/, '').replace(/:.*$/, '').trim();
+        if (!optionText) return;
+        const isSelected = selected.includes(optionText) || selected.some((s) => s.startsWith('Other:') && optionText.toLowerCase() === 'other');
+        const otherValue = selected.find((s) => s.startsWith('Other:'));
+        let replacement = isSelected ? `☑ ${optionText}` : `☐ ${optionText}`;
+        if (optionText.toLowerCase() === 'other' && otherValue) {
+          replacement = `☑ Other: <span style="border-bottom:1px solid #6B3A5E;padding:0 4px;color:#6B3A5E">${otherValue.replace('Other:', '')}</span>`;
+        }
+        // Escape option text for regex
+        const escapedOption = optionText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        html = html.replace(new RegExp(`☐\\s*${escapedOption}`), replacement);
+      });
+      // Clean up remaining underscores after "Other:"
+      html = html.replace(/:\s*_{3,}/g, ':');
+      return `<p>${html}</p>`;
+    }
+
+    return `<p>${field.rawHtml}</p>`;
+  });
+
+  return filledParagraphs.join('');
+}
+
 function ReadOnlyDocument({
   htmlContent,
-  documentType,
   formData,
+  signerName,
+  signedAt,
 }: {
   htmlContent: string;
   documentType: string;
   formData: Record<string, string>;
+  signerName?: string;
+  signedAt?: string;
 }) {
-  if (documentType !== 'intake_form') {
-    return (
-      <div
-        className="prose prose-sm max-w-none text-[#5C4A42]
-          [&_h1]:text-[#6B3A5E] [&_h2]:text-[#6B3A5E] [&_h3]:text-[#6B3A5E]
-          [&_strong]:text-[#5C4A42] [&_li]:text-[#5C4A42]"
-        dangerouslySetInnerHTML={{ __html: htmlContent }}
-      />
-    );
+  // Fill answers inline for all document types
+  const hasFormData = Object.keys(formData).length > 0;
+  const filledHtml = hasFormData ? fillHtmlInline(htmlContent, formData) : htmlContent;
+
+  // If there's a signature, append it at the bottom within the document flow
+  let finalHtml = filledHtml;
+  if (signerName) {
+    const signDate = signedAt
+      ? new Date(signedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      : '';
+    // Replace signature underscores if they exist, otherwise append
+    const sigBlock = `<span style="border-bottom:1px solid #6B3A5E;padding:0 4px;font-family:Georgia,serif;font-style:italic;font-size:1.1em;color:#6B3A5E">${signerName}</span>`;
+    const dateBlock = signDate
+      ? `<span style="border-bottom:1px solid #6B3A5E;padding:0 4px;color:#6B3A5E">${signDate}</span>`
+      : '';
+
+    // Try replacing signature/date placeholder underscores at the end of the document
+    if (/Signature.*_{3,}/i.test(finalHtml)) {
+      finalHtml = finalHtml.replace(
+        /(Signature[^_]*?)_{3,}/i,
+        `$1${sigBlock}`
+      );
+    }
+    if (dateBlock && /Date.*_{3,}/i.test(finalHtml)) {
+      finalHtml = finalHtml.replace(
+        /(Date[^_]*?)_{3,}/i,
+        `$1${dateBlock}`
+      );
+    }
   }
 
-  const paragraphs = splitIntoParagraphs(htmlContent);
-  const keyCounter: Record<string, number> = {};
-  const fields = paragraphs.map((p) => parseLine(p, keyCounter));
-
   return (
-    <div className="space-y-4">
-      {fields.map((field, idx) => {
-        if (field.type === 'plain') {
-          return (
-            <div
-              key={idx}
-              className="prose prose-sm max-w-none text-[#5C4A42]
-                [&_h1]:text-[#6B3A5E] [&_h2]:text-[#6B3A5E] [&_h3]:text-[#6B3A5E]
-                [&_strong]:font-semibold [&_strong]:text-[#5C4A42]"
-              dangerouslySetInnerHTML={{ __html: field.rawHtml }}
-            />
-          );
-        }
-
-        const value = formData[field.key] || '';
-
-        if (field.type === 'text') {
-          return (
-            <div key={idx} className="space-y-1">
-              <p className="text-xs font-medium text-[#8B7080]">{field.label}</p>
-              <p className="text-sm text-[#5C4A42] bg-[#FDF8F5] rounded-lg px-3 py-2 border border-[#E8D8E0]/50">
-                {value || <span className="text-[#C0A8B4] italic">Not provided</span>}
-              </p>
-            </div>
-          );
-        }
-
-        if (field.type === 'yes_no') {
-          return (
-            <div key={idx} className="space-y-1">
-              <p className="text-xs font-medium text-[#8B7080]">{field.label}</p>
-              <p className="text-sm text-[#5C4A42]">
-                {value ? (
-                  <Badge className={`rounded-full text-xs px-2.5 py-0.5 border-0 ${
-                    value === 'Yes' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>{value}</Badge>
-                ) : (
-                  <span className="text-[#C0A8B4] italic">Not answered</span>
-                )}
-              </p>
-            </div>
-          );
-        }
-
-        if (field.type === 'multi_choice') {
-          const selected = value ? value.split('|') : [];
-          return (
-            <div key={idx} className="space-y-1">
-              <p className="text-xs font-medium text-[#8B7080]">{field.label}</p>
-              {selected.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {selected.map((s, i) => (
-                    <Badge key={i} className="rounded-full text-xs px-2.5 py-0.5 bg-[#F5EDF1] text-[#6B3A5E] border-0">
-                      {s.startsWith('Other:') ? `Other: ${s.replace('Other:', '')}` : s}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <span className="text-[#C0A8B4] italic text-sm">Not answered</span>
-              )}
-            </div>
-          );
-        }
-
-        return null;
-      })}
-    </div>
+    <div
+      className="prose prose-sm max-w-none text-[#5C4A42]
+        [&_h1]:text-[#6B3A5E] [&_h2]:text-[#6B3A5E] [&_h3]:text-[#6B3A5E]
+        [&_strong]:font-semibold [&_strong]:text-[#5C4A42] [&_li]:text-[#5C4A42]"
+      dangerouslySetInnerHTML={{ __html: finalHtml }}
+    />
   );
 }
 
@@ -259,17 +275,19 @@ export function DocumentViewerDialog({
               htmlContent={document.html_content}
               documentType={document.document_type}
               formData={formData}
+              signerName={signerName}
+              signedAt={signedAt}
             />
 
-            {/* Signature Block */}
-            <div className="border-t-2 border-[#E8D8E0] mt-8 pt-6">
-              <div className="flex items-center gap-2 mb-3">
+            {/* Signature verification details */}
+            <div className="border-t-2 border-[#E8D8E0] mt-8 pt-4">
+              <div className="flex items-center gap-2 mb-2">
                 <PenTool size={14} className="text-[#B5648A]" />
-                <span className="text-xs font-semibold text-[#8B7080] uppercase tracking-wider">Signature</span>
+                <span className="text-xs font-semibold text-[#8B7080] uppercase tracking-wider">Signature Verification</span>
               </div>
-              <p className="text-lg italic text-[#6B3A5E] font-serif mb-1">{signerName}</p>
               <p className="text-xs text-[#8B7080]">
-                Signed on {new Date(signedAt).toLocaleDateString('en-US', {
+                Signed by <strong className="text-[#5C4A42]">{signerName}</strong> on{' '}
+                {new Date(signedAt).toLocaleDateString('en-US', {
                   weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
                   hour: 'numeric', minute: '2-digit',
                 })}

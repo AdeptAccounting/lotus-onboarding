@@ -131,11 +131,11 @@ export function usePortalSignatures(token: string) {
 
       const { data, error } = await getSupabase()
         .from('onboarding_signatures')
-        .select('*')
+        .select('*, document:onboarding_documents(name, slug, document_type)')
         .eq('client_id', client.id);
 
       if (error) throw error;
-      return data as OnboardingSignature[];
+      return data as (OnboardingSignature & { document?: { name: string; slug: string; document_type: string } })[];
     },
     enabled: !!token,
   });

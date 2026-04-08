@@ -636,36 +636,48 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
                 <p className="text-sm text-[#8B7080] py-4 text-center">No signed documents yet</p>
               ) : (
                 <div className="space-y-3">
-                  {signatures.map((sig) => (
-                    <div
-                      key={sig.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                          <CheckCircle2 size={14} className="text-green-600" />
+                  {/* Group signatures by document_id so each doc appears once */}
+                  {Array.from(
+                    signatures.reduce((map, sig) => {
+                      if (!map.has(sig.document_id)) map.set(sig.document_id, []);
+                      map.get(sig.document_id)!.push(sig);
+                      return map;
+                    }, new Map<string, typeof signatures>())
+                  ).map(([docId, docSigs]) => {
+                    const firstSig = docSigs[0];
+                    return (
+                      <div
+                        key={docId}
+                        className="flex items-center justify-between p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                            <CheckCircle2 size={14} className="text-green-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-[#5C4A42]">{firstSig.document?.name}</p>
+                            <p className="text-xs text-[#8B7080]">
+                              {docSigs.map((s) => `Signed by ${s.signer_name}${s.signer_role === 'doula' ? ' (doula)' : ''}`).join(' · ')}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-[#5C4A42]">{sig.document?.name}</p>
-                          <p className="text-xs text-[#8B7080]">Signed by {sig.signer_name}</p>
+                        <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                          <p className="text-xs text-[#8B7080]">
+                            {new Date(firstSig.signed_at).toLocaleDateString('en-US', {
+                              month: 'short', day: 'numeric', year: 'numeric',
+                            })}
+                          </p>
+                          <button
+                            onClick={() => setViewerDoc({ open: true, documentId: docId, signerName: firstSig.signer_name, signedAt: firstSig.signed_at, ipAddress: firstSig.ip_address })}
+                            className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
+                            title="View document"
+                          >
+                            <Eye size={14} />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                        <p className="text-xs text-[#8B7080]">
-                          {new Date(sig.signed_at).toLocaleDateString('en-US', {
-                            month: 'short', day: 'numeric', year: 'numeric',
-                          })}
-                        </p>
-                        <button
-                          onClick={() => setViewerDoc({ open: true, documentId: sig.document_id, signerName: sig.signer_name, signedAt: sig.signed_at, ipAddress: sig.ip_address })}
-                          className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
-                          title="View document"
-                        >
-                          <Eye size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -1353,18 +1365,27 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                                 )}
                                 <span className="text-[#5C4A42]">{doc.name}</span>
                               </div>
-                              {isSigned ? (
-                                <span className="text-xs text-green-700 font-medium">Signed</span>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setDoulaSigningDocId(isSigningThis ? null : doc.id)}
-                                  className="rounded-lg text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => setViewerDoc({ open: true, documentId: doc.id, signerName: '', signedAt: '', ipAddress: null })}
+                                  className="p-1.5 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
+                                  title="Preview document"
                                 >
-                                  {isSigningThis ? 'Cancel' : 'Sign'}
-                                </Button>
-                              )}
+                                  <Eye size={14} />
+                                </button>
+                                {isSigned ? (
+                                  <span className="text-xs text-green-700 font-medium">Signed</span>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setDoulaSigningDocId(isSigningThis ? null : doc.id)}
+                                    className="rounded-lg text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                                  >
+                                    {isSigningThis ? 'Cancel' : 'Sign'}
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                             {isSigningThis && (
                               <div className="mt-3 p-3 rounded-lg bg-white border border-[#E8D8E0] space-y-3">
