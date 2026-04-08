@@ -21,6 +21,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // Shared nav highlight logic
+  const getIsNavActive = (itemHref: string): boolean => {
+    const isClientDetailPage = /^\/clients\/[^/]+/.test(pathname);
+    if (isClientDetailPage) {
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const from = params?.get('from');
+      const status = params?.get('status');
+      if (from === 'dashboard' && status !== 'active') {
+        return itemHref === '/dashboard';
+      }
+      return itemHref === '/clients';
+    }
+    return pathname === itemHref || pathname.startsWith(itemHref + '/');
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#FDF8F5]">
@@ -46,22 +61,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
-          const isClientDetailPage = /^\/clients\/[^/]+/.test(pathname);
-          const fromParam = isClientDetailPage && typeof window !== 'undefined'
-            ? new URLSearchParams(window.location.search).get('from')
-            : null;
-          let isActive: boolean;
-          if (isClientDetailPage) {
-            if (item.href === '/dashboard') {
-              isActive = fromParam === 'dashboard' || !fromParam;
-            } else if (item.href === '/clients') {
-              isActive = fromParam === 'clients';
-            } else {
-              isActive = false;
-            }
-          } else {
-            isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-          }
+          const isActive = getIsNavActive(item.href);
           const Icon = item.icon;
           return (
             <Link
@@ -121,7 +121,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </button>
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              const isActive = getIsNavActive(item.href);
               return (
                 <Link
                   key={item.href}
@@ -155,21 +155,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <nav className="flex-1 p-4 space-y-1">
               {navItems.map((item) => {
-                const isClientDetailPage = /^\/clients\/[^/]+/.test(pathname);
-                let isActive: boolean;
-                if (isClientDetailPage) {
-                  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-                  const from = params?.get('from');
-                  const status = params?.get('status');
-                  // Active clients → Clients tab; pipeline clients from dashboard → Dashboard tab
-                  if (from === 'dashboard' && status !== 'active') {
-                    isActive = item.href === '/dashboard';
-                  } else {
-                    isActive = item.href === '/clients';
-                  }
-                } else {
-                  isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                }
+                const isActive = getIsNavActive(item.href);
                 const Icon = item.icon;
                 return (
                   <Link
