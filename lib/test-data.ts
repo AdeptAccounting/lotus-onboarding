@@ -2,95 +2,15 @@
  * TEST DATA GENERATOR — Temporary dev utility for filling intake documents.
  * Delete this file (and the button in documents/page.tsx) when testing is complete.
  *
- * Parsing logic duplicated from components/portal/fillable-document.tsx
- * to discover field keys/types from document HTML.
+ * Uses parsing from fillable-document.tsx to discover field keys/types.
  */
 
-// ── Duplicated parsing logic ────────────────────────────────────────
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '')
-    .trim()
-    .replace(/\s+/g, '_')
-    .slice(0, 60);
-}
-
-function extractLabel(html: string): string {
-  const strongMatch = html.match(/<strong[^>]*>(.*?)<\/strong>/i);
-  if (strongMatch) {
-    return strongMatch[1].replace(/<[^>]+>/g, '').replace(/[:?]/g, '').trim();
-  }
-  return html.replace(/<[^>]+>/g, '').replace(/[:?]/g, '').trim().slice(0, 80);
-}
-
-function extractCheckboxOptions(html: string): string[] {
-  const stripped = html.replace(/<[^>]+>/g, '');
-  const parts = stripped.split('☐').map((s) => s.trim()).filter(Boolean);
-  return parts
-    .map((p) => p.replace(/_{3,}.*$/, '').replace(/:.*$/, '').trim())
-    .filter(Boolean);
-}
-
-function hasOtherField(html: string): boolean {
-  return /Other\s*:\s*_{3,}/i.test(html.replace(/<[^>]+>/g, ''));
-}
-
-type FieldType = 'text' | 'yes_no' | 'multi_choice' | 'plain';
-
-interface ParsedField {
-  type: FieldType;
-  label: string;
-  key: string;
-  options?: string[];
-  hasOther?: boolean;
-}
-
-function parseLine(
-  rawHtml: string,
-  keyCounter: Record<string, number>
-): ParsedField {
-  const stripped = rawHtml.replace(/<[^>]+>/g, '');
-  const hasCheckboxes = stripped.includes('☐');
-  const hasUnderscores = /_{3,}/.test(stripped);
-
-  const label = extractLabel(rawHtml);
-  const baseKey = label ? slugify(label) : 'field';
-
-  const count = keyCounter[baseKey] ?? 0;
-  keyCounter[baseKey] = count + 1;
-  const key = count === 0 ? baseKey : `${baseKey}_${count}`;
-
-  if (hasCheckboxes) {
-    const options = extractCheckboxOptions(rawHtml);
-    const normalized = options.map((o) => o.toLowerCase());
-    if (
-      normalized.length === 2 &&
-      normalized.includes('yes') &&
-      normalized.includes('no')
-    ) {
-      return { type: 'yes_no', label, key };
-    }
-    return { type: 'multi_choice', label, key, options, hasOther: hasOtherField(rawHtml) };
-  }
-
-  if (hasUnderscores && label) {
-    return { type: 'text', label, key };
-  }
-
-  return { type: 'plain', label, key };
-}
-
-function splitIntoParagraphs(html: string): string[] {
-  const normalized = html.replace(/<br\s*\/?>/gi, '\n');
-  return normalized
-    .split(/<\/p>\s*<p[^>]*>/i)
-    .map((block) =>
-      block.replace(/^<p[^>]*>/i, '').replace(/<\/p>$/i, '').trim()
-    )
-    .filter(Boolean);
-}
+import {
+  splitIntoParagraphs,
+  parseParagraph,
+  isDoulaField,
+  type InlineField,
+} from '@/components/portal/fillable-document';
 
 // ── Test value generation ───────────────────────────────────────────
 
@@ -139,16 +59,13 @@ function testValueForTextField(key: string): string {
   return 'Test response';
 }
 
-function testValueForField(field: ParsedField): string {
+function testValueForField(field: InlineField): string {
   if (field.type === 'yes_no') return 'Yes';
 
   if (field.type === 'multi_choice') {
     const opts = field.options ?? [];
     if (opts.length === 0) return '';
-    // Select first option, or first two if 3+ options
-    return opts.length >= 3
-      ? `${opts[0]}|${opts[1]}`
-      : opts[0];
+    return opts.length >= 3 ? `${opts[0]}|${opts[1]}` : opts[0];
   }
 
   if (field.type === 'text') return testValueForTextField(field.key);
@@ -175,13 +92,27 @@ export function generateAllTestData(documents: DocumentInput[]): {
   for (const doc of documents) {
     const paragraphs = splitIntoParagraphs(doc.html_content);
     const keyCounter: Record<string, number> = {};
-    const fields = paragraphs.map((p) => parseLine(p, keyCounter));
+    const parsed = paragraphs.map((p) => parseParagraph(p, keyCounter));
 
     const docForm: Record<string, string> = {};
-    for (const field of fields) {
-      if (field.type === 'plain') continue;
-      const value = testValueForField(field);
-      if (value) docForm[field.key] = value;
+
+    for (const para of parsed) {
+      // Checkbox fields
+      if (para.checkboxField) {
+        const field = para.checkboxField;
+        if (field.isDoula) continue; // Skip doula fields
+        const value = testValueForField(field);
+        if (value) docForm[field.key] = value;
+        continue;
+      }
+
+      // Inline text fields
+      for (const seg of para.segments) {
+        if (seg.type !== 'field') continue;
+        if (seg.field.isDoula) continue; // Skip doula fields
+        const value = testValueForField(seg.field);
+        if (value) docForm[seg.field.key] = value;
+      }
     }
 
     formData[doc.id] = docForm;

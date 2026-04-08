@@ -12,6 +12,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useDocument, useIntakeResponse } from '@/hooks/useClients';
 import { Printer, Loader2, FileText, PenTool } from 'lucide-react';
+import {
+  splitIntoParagraphs,
+  parseParagraph,
+  slugify,
+} from '@/components/portal/fillable-document';
 
 interface DocumentViewerProps {
   open: boolean;
@@ -23,124 +28,74 @@ interface DocumentViewerProps {
   ipAddress?: string | null;
 }
 
-// ─── Field parsing (adapted from FillableDocument) ───────────────────────────
-
-function extractLabel(html: string): string {
-  const strongMatch = html.match(/<strong[^>]*>(.*?)<\/strong>/i);
-  if (strongMatch) {
-    return strongMatch[1].replace(/<[^>]+>/g, '').replace(/[:?]/g, '').trim();
-  }
-  return html.replace(/<[^>]+>/g, '').replace(/[:?]/g, '').trim().slice(0, 80);
-}
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '')
-    .trim()
-    .replace(/\s+/g, '_')
-    .slice(0, 60);
-}
-
-function splitIntoParagraphs(html: string): string[] {
-  const normalized = html.replace(/<br\s*\/?>/gi, '\n');
-  return normalized
-    .split(/<\/p>\s*<p[^>]*>/i)
-    .map((block) => block.replace(/^<p[^>]*>/i, '').replace(/<\/p>$/i, '').trim())
-    .filter(Boolean);
-}
-
-type FieldType = 'text' | 'yes_no' | 'multi_choice' | 'plain';
-
-interface ParsedField {
-  type: FieldType;
-  label: string;
-  key: string;
-  rawHtml: string;
-}
-
-function parseLine(rawHtml: string, keyCounter: Record<string, number>): ParsedField {
-  const stripped = rawHtml.replace(/<[^>]+>/g, '');
-  const hasCheckboxes = stripped.includes('☐');
-  const hasUnderscores = /_{3,}/.test(stripped);
-
-  const label = extractLabel(rawHtml);
-  const baseKey = label ? slugify(label) : 'field';
-  const count = keyCounter[baseKey] ?? 0;
-  keyCounter[baseKey] = count + 1;
-  const key = count === 0 ? baseKey : `${baseKey}_${count}`;
-
-  if (hasCheckboxes) {
-    const options = stripped.split('☐').map((s) => s.trim()).filter(Boolean);
-    const normalized = options.map((o) => o.replace(/_{3,}.*$/, '').replace(/:.*$/, '').trim().toLowerCase());
-    if (normalized.length === 2 && normalized.includes('yes') && normalized.includes('no')) {
-      return { type: 'yes_no', label, key, rawHtml };
-    }
-    return { type: 'multi_choice', label, key, rawHtml };
-  }
-
-  if (hasUnderscores && label) {
-    return { type: 'text', label, key, rawHtml };
-  }
-
-  return { type: 'plain', label, key, rawHtml };
-}
-
 // ─── Read-only rendered document ─────────────────────────────────────────────
+
+const filledSpan = (value: string) =>
+  `<span style="border-bottom:1px solid #6B3A5E;padding:0 4px;font-weight:500;color:#6B3A5E">${value}</span>`;
+
+const emptySpan = '<em style="color:#C0A8B4">Not provided</em>';
 
 /** Replace underscores and checkbox symbols in raw HTML with filled values inline. */
 function fillHtmlInline(rawHtml: string, formData: Record<string, string>): string {
   const paragraphs = splitIntoParagraphs(rawHtml);
   const keyCounter: Record<string, number> = {};
-  const fields = paragraphs.map((p) => parseLine(p, keyCounter));
 
-  const filledParagraphs = fields.map((field) => {
-    if (field.type === 'plain') return `<p>${field.rawHtml}</p>`;
+  const filledParagraphs = paragraphs.map((paraHtml) => {
+    const parsed = parseParagraph(paraHtml, keyCounter);
 
-    const value = formData[field.key] || '';
-    let html = field.rawHtml;
+    // Checkbox field (yes/no or multi-choice)
+    if (parsed.checkboxField) {
+      const field = parsed.checkboxField;
+      const value = formData[field.key] || '';
+      let html = paraHtml;
 
-    if (field.type === 'text') {
-      // Replace underscores with the filled value styled inline
-      const displayValue = value || '<em style="color:#C0A8B4">Not provided</em>';
-      html = html.replace(
-        /_{3,}/g,
-        `<span style="border-bottom:1px solid #6B3A5E;padding:0 4px;font-weight:500;color:#6B3A5E">${displayValue}</span>`
-      );
-      return `<p>${html}</p>`;
-    }
+      if (field.type === 'yes_no') {
+        html = html.replace(/☐\s*Yes/g, value === 'Yes' ? '☑ Yes' : '☐ Yes');
+        html = html.replace(/☐\s*No/g, value === 'No' ? '☑ No' : '☐ No');
+        return `<p>${html}</p>`;
+      }
 
-    if (field.type === 'yes_no') {
-      // Replace ☐ Yes ☐ No with checked/unchecked indicators
-      html = html.replace(/☐\s*Yes/g, value === 'Yes' ? '☑ Yes' : '☐ Yes');
-      html = html.replace(/☐\s*No/g, value === 'No' ? '☑ No' : '☐ No');
-      return `<p>${html}</p>`;
-    }
-
-    if (field.type === 'multi_choice') {
+      // Multi-choice
       const selected = value ? value.split('|') : [];
-      // Replace each ☐ Option with ☑/☐ based on selection
       const stripped = html.replace(/<[^>]+>/g, '');
       const parts = stripped.split('☐').filter(Boolean);
       parts.forEach((part) => {
         const optionText = part.replace(/_{3,}.*$/, '').replace(/:.*$/, '').trim();
         if (!optionText) return;
-        const isSelected = selected.includes(optionText) || selected.some((s) => s.startsWith('Other:') && optionText.toLowerCase() === 'other');
+        const isSelected = selected.includes(optionText) ||
+          selected.some((s) => s.startsWith('Other:') && optionText.toLowerCase() === 'other');
         const otherValue = selected.find((s) => s.startsWith('Other:'));
         let replacement = isSelected ? `☑ ${optionText}` : `☐ ${optionText}`;
         if (optionText.toLowerCase() === 'other' && otherValue) {
-          replacement = `☑ Other: <span style="border-bottom:1px solid #6B3A5E;padding:0 4px;color:#6B3A5E">${otherValue.replace('Other:', '')}</span>`;
+          replacement = `☑ Other: ${filledSpan(otherValue.replace('Other:', ''))}`;
         }
-        // Escape option text for regex
         const escapedOption = optionText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         html = html.replace(new RegExp(`☐\\s*${escapedOption}`), replacement);
       });
-      // Clean up remaining underscores after "Other:"
       html = html.replace(/:\s*_{3,}/g, ':');
       return `<p>${html}</p>`;
     }
 
-    return `<p>${field.rawHtml}</p>`;
+    // Paragraph with inline text fields — replace each ___ run with corresponding value
+    if (parsed.hasFields) {
+      let html = paraHtml;
+      // Process segments to find field keys, then replace ___ runs in order
+      const fieldKeys: string[] = [];
+      for (const seg of parsed.segments) {
+        if (seg.type === 'field') fieldKeys.push(seg.field.key);
+      }
+
+      let fieldIdx = 0;
+      html = html.replace(/_{3,}/g, () => {
+        const key = fieldKeys[fieldIdx++];
+        const value = key ? formData[key] : undefined;
+        return value ? filledSpan(value) : emptySpan;
+      });
+      return `<p>${html}</p>`;
+    }
+
+    // Plain paragraph
+    return `<p>${paraHtml}</p>`;
   });
 
   return filledParagraphs.join('');

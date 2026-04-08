@@ -13,7 +13,7 @@ import { Check, FileText, PenTool, ChevronRight, Sparkles, AlertCircle, FlaskCon
 import { generateAllTestData } from '@/lib/test-data';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import FillableDocument from '@/components/portal/fillable-document';
+import FillableDocument, { splitIntoParagraphs, parseParagraph, isDoulaField } from '@/components/portal/fillable-document';
 
 export default function DocumentsPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
@@ -45,17 +45,42 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
 
   const activeDoc = documents[activeDocIndex];
 
-  // Check if a document has fillable fields that need completing
+  // Build set of doula field keys per document so we can exclude them from completion checks
+  const doulaFieldKeys = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    for (const doc of documents) {
+      const keys = new Set<string>();
+      const paras = splitIntoParagraphs(doc.html_content);
+      const kc: Record<string, number> = {};
+      for (const p of paras) {
+        const parsed = parseParagraph(p, kc);
+        if (parsed.checkboxField?.isDoula) keys.add(parsed.checkboxField.key);
+        for (const seg of parsed.segments) {
+          if (seg.type === 'field' && seg.field.isDoula) keys.add(seg.field.key);
+        }
+      }
+      map[doc.id] = keys;
+    }
+    return map;
+  }, [documents]);
+
+  // Check if a document has fillable fields that need completing (excludes doula fields)
   const hasFilledFields = (docId: string): boolean => {
     const docFormData = allFormData[docId];
     if (!docFormData || Object.keys(docFormData).length === 0) return false;
-    return Object.values(docFormData).every((v) => v.trim() !== '');
+    const doula = doulaFieldKeys[docId] ?? new Set();
+    return Object.entries(docFormData)
+      .filter(([key]) => !doula.has(key))
+      .every(([, v]) => v.trim() !== '');
   };
 
-  // Check if a document has any fillable content (fields were detected by the parser)
+  // Check if a document has any fillable content (excludes doula fields)
   const hasFillableContent = (docId: string): boolean => {
     const docFormData = allFormData[docId];
-    return !!docFormData && Object.keys(docFormData).length > 0;
+    if (!docFormData) return false;
+    const doula = doulaFieldKeys[docId] ?? new Set();
+    const clientKeys = Object.keys(docFormData).filter((k) => !doula.has(k));
+    return clientKeys.length > 0;
   };
 
   const isDocReady = (docId: string): boolean => {
