@@ -140,6 +140,7 @@ export function welcomeEmailHtml(clientName: string, portalUrl: string): string 
         With love and care,<br />
         The Lotus Program Experience
       </p>
+      <p style="color: #C0A8B4; font-size: 9px; text-align: center; margin-top: 16px; letter-spacing: 0.5px;">Powered by Adept Data Automation</p>
     </div>
   `;
 }
@@ -176,6 +177,7 @@ export function contractReadyEmailHtml(clientName: string, portalUrl: string, se
         With love and care,<br />
         The Lotus Program Experience
       </p>
+      <p style="color: #C0A8B4; font-size: 9px; text-align: center; margin-top: 16px; letter-spacing: 0.5px;">Powered by Adept Data Automation</p>
     </div>
   `;
 }
@@ -218,6 +220,7 @@ export function reminderEmailHtml(
         With love and care,<br />
         The Lotus Program Experience
       </p>
+      <p style="color: #C0A8B4; font-size: 9px; text-align: center; margin-top: 16px; letter-spacing: 0.5px;">Powered by Adept Data Automation</p>
     </div>
   `;
 }
@@ -254,6 +257,7 @@ export function paymentLinkReadyEmailHtml(clientName: string, portalUrl: string)
         With love and care,<br />
         The Lotus Program Experience
       </p>
+      <p style="color: #C0A8B4; font-size: 9px; text-align: center; margin-top: 16px; letter-spacing: 0.5px;">Powered by Adept Data Automation</p>
     </div>
   `;
 }
@@ -303,6 +307,7 @@ export function portalUpdateEmailHtml(
         With love and care,<br />
         The Lotus Program Experience
       </p>
+      <p style="color: #C0A8B4; font-size: 9px; text-align: center; margin-top: 16px; letter-spacing: 0.5px;">Powered by Adept Data Automation</p>
     </div>
   `;
 }
@@ -324,6 +329,7 @@ export function packetCompleteNotificationHtml(clientName: string, adminUrl: str
           Review Documents
         </a>
       </div>
+      <p style="color: #C0A8B4; font-size: 9px; text-align: center; margin-top: 16px; letter-spacing: 0.5px;">Powered by Adept Data Automation</p>
     </div>
   `;
 }

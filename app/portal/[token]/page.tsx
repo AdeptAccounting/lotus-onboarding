@@ -181,6 +181,7 @@ export default function PortalWelcomePage({ params }: { params: Promise<{ token:
           <Heart size={14} fill="#B5648A" />
         </div>
       )}
+      <p className="text-center text-[10px] text-[#C0A8B4] mt-10 tracking-wide">Powered by Adept Data Automation</p>
     </motion.div>
   );
 }

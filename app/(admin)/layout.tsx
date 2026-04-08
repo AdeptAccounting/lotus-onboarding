@@ -207,6 +207,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <LogOut size={18} />
                 Sign Out
               </button>
+              <p className="text-[9px] text-[#C0A8B4] text-center mt-2 tracking-wide">Powered by Adept Data Automation</p>
             </div>
           </>
         )}

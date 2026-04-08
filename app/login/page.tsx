@@ -89,6 +89,7 @@ export default function LoginPage() {
             </Button>
           </form>
         </div>
+        <p className="text-center text-[10px] text-[#C0A8B4] mt-4 tracking-wide">Powered by Adept Data Automation</p>
       </div>
     </div>
   );
