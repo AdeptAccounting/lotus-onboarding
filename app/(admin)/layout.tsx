@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Users, Settings, LayoutDashboard, LogOut, Menu, X, HelpCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NotificationBell } from '@/components/admin/notification-bell';
 
 const navItems = [
@@ -20,15 +20,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, loading, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [queryFrom, setQueryFrom] = useState<string | null>(null);
+  const [queryStatus, setQueryStatus] = useState<string | null>(null);
+
+  // Read query params whenever pathname changes (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setQueryFrom(params.get('from'));
+      setQueryStatus(params.get('status'));
+    }
+  }, [pathname]);
 
   // Shared nav highlight logic
   const getIsNavActive = (itemHref: string): boolean => {
     const isClientDetailPage = /^\/clients\/[^/]+/.test(pathname);
     if (isClientDetailPage) {
-      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const from = params?.get('from');
-      const status = params?.get('status');
-      if (from === 'dashboard' && status !== 'active') {
+      if (queryFrom === 'dashboard' && queryStatus !== 'active') {
         return itemHref === '/dashboard';
       }
       return itemHref === '/clients';
