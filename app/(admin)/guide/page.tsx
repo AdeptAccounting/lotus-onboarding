@@ -185,10 +185,9 @@ const SECTIONS = [
               <span className="font-medium text-[#6B3A5E] text-sm">Documents Tab</span>
             </div>
             <p className="text-xs text-[#8B7080]">
-              See all documents the client signed during onboarding. Click the <strong>eye icon</strong> on any signed
-              document to view the full completed form with all filled-in fields and the signature. You can
-              <strong> print or save as PDF</strong> from the viewer. Upload additional documents by clicking
-              &quot;Upload&quot;. Uploaded documents are <strong>private by default</strong> — click the eye icon to
+              See all documents the client signed during onboarding. Click the <strong>eye icon</strong> on any document
+              to preview it. You can <strong>print or save as PDF</strong> from the viewer. Upload additional documents by clicking
+              &quot;Upload&quot;. Uploaded documents are <strong>private by default</strong> — click the bell icon to
               toggle visibility so the client can see it in their portal.
             </p>
           </div>
@@ -338,8 +337,9 @@ const SECTIONS = [
             <p className="font-medium text-[#6B3A5E] text-sm mb-1">Document visibility:</p>
             <ul className="text-xs text-[#8B7080] space-y-1.5 list-disc list-inside">
               <li>Uploaded documents are <strong>private by default</strong></li>
-              <li>Click the eye icon next to a document to share it with the client</li>
-              <li>Toggle it off again to hide it from the client&apos;s portal</li>
+              <li>Click the <strong>eye icon</strong> to preview a document</li>
+              <li>Click the <strong>bell icon</strong> to share it with the client</li>
+              <li>Toggle the bell off again to hide it from the client&apos;s portal</li>
             </ul>
           </div>
         </div>
