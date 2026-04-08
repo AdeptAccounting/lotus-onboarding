@@ -135,6 +135,17 @@ export function useCreateActiveClient() {
         actor: 'admin',
       });
 
+      // Send portal access email (non-fatal)
+      try {
+        await fetch('/api/email/portal-access', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_id: data.id }),
+        });
+      } catch {
+        // Non-fatal — portal still works without email
+      }
+
       return data as OnboardingClient;
     },
     onSuccess: () => {

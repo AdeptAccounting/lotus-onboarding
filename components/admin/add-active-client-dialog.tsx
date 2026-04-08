@@ -32,7 +32,7 @@ export function AddActiveClientDialog() {
         service_type: serviceType || undefined,
         notes: notes || undefined,
       });
-      toast.success('Client added!', { description: `${firstName} ${lastName} added as an active client` });
+      toast.success('Client added!', { description: `${firstName} ${lastName} added as an active client. Portal access email sent to ${email}.` });
       setOpen(false);
       setFirstName('');
       setLastName('');

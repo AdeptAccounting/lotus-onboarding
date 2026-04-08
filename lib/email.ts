@@ -312,6 +312,46 @@ export function portalUpdateEmailHtml(
   `;
 }
 
+export function portalAccessEmailHtml(clientName: string, portalUrl: string): string {
+  const firstName = clientName.split(' ')[0];
+  return `
+    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; background: #FDF8F5; padding: 40px 30px; border-radius: 16px;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: #6B3A5E; font-size: 24px; margin: 0;">The Lotus Program Experience</h1>
+        <p style="color: #B5648A; font-size: 14px; margin-top: 4px;">Client Portal</p>
+      </div>
+
+      <p style="color: #5C4A42; font-size: 16px; line-height: 1.6;">
+        Dear ${firstName},
+      </p>
+
+      <p style="color: #5C4A42; font-size: 16px; line-height: 1.6;">
+        Welcome to The Lotus Program Experience! Your personal client portal is ready.
+        You can use it to view your documents and communicate with your care team.
+      </p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${portalUrl}" style="display: inline-block; background: linear-gradient(135deg, #B5648A, #9B4D73); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600;">
+          Access Your Portal
+        </a>
+      </div>
+
+      <p style="color: #8B7080; font-size: 14px; line-height: 1.6;">
+        Save this email so you can easily return to your portal anytime. If you have any questions,
+        you can send a message directly through the portal and your care team will get back to you.
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #E8D8E0; margin: 30px 0;" />
+
+      <p style="color: #8B7080; font-size: 12px; text-align: center;">
+        With love and care,<br />
+        The Lotus Program Experience
+      </p>
+      <p style="color: #C0A8B4; font-size: 9px; text-align: center; margin-top: 16px; letter-spacing: 0.5px;">Powered by Adept Data Automation</p>
+    </div>
+  `;
+}
+
 export function packetCompleteNotificationHtml(clientName: string, adminUrl: string): string {
   return `
     <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; background: #FDF8F5; padding: 40px 30px; border-radius: 16px;">
