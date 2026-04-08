@@ -1,22 +1,68 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useClients } from '@/hooks/useClients';
 import { AddClientDialog } from '@/components/admin/add-client-dialog';
-import { STATUS_LABELS, STATUS_COLORS, SERVICE_TYPE_LABELS, type ClientStatus } from '@/types';
+import { STATUS_LABELS, STATUS_COLORS, SERVICE_TYPE_LABELS, type ClientStatus, type OnboardingClient } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Users, Clock, CheckCircle2, Sparkles } from 'lucide-react';
+import { Search, Users, Clock, CheckCircle2, Sparkles, ChevronUp, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+
+type SortKey = 'name' | 'email' | 'status' | 'service' | 'added';
+type SortDir = 'asc' | 'desc';
+
+const SORT_STORAGE_KEY = 'lotus-dashboard-sort';
+
+function getSortValue(client: OnboardingClient, key: SortKey): string {
+  switch (key) {
+    case 'name': return `${client.first_name} ${client.last_name}`.toLowerCase();
+    case 'email': return client.email.toLowerCase();
+    case 'status': return STATUS_LABELS[client.status]?.toLowerCase() ?? '';
+    case 'service': return client.service_type ? (SERVICE_TYPE_LABELS[client.service_type]?.toLowerCase() ?? '') : 'zzz';
+    case 'added': return client.created_at;
+  }
+}
 
 export default function DashboardPage() {
   const { data: clients, isLoading } = useClients();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>('all');
 
+  // Persistent sort state
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  // Load sort from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SORT_STORAGE_KEY);
+      if (saved) {
+        const { key, dir } = JSON.parse(saved);
+        if (key) setSortKey(key);
+        if (dir) setSortDir(dir);
+      }
+    } catch {}
+  }, []);
+
+  // Save sort to localStorage on change
+  useEffect(() => {
+    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify({ key: sortKey, dir: sortDir }));
+  }, [sortKey, sortDir]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
   const filtered = useMemo(() => {
     if (!clients) return [];
-    let result = clients;
+    let result = [...clients];
+
     if (statusFilter !== 'all') {
       result = result.filter((c) => c.status === statusFilter);
     }
@@ -29,8 +75,17 @@ export default function DashboardPage() {
           c.email.toLowerCase().includes(q)
       );
     }
+
+    // Sort
+    result.sort((a, b) => {
+      const aVal = getSortValue(a, sortKey);
+      const bVal = getSortValue(b, sortKey);
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
     return result;
-  }, [clients, search, statusFilter]);
+  }, [clients, search, statusFilter, sortKey, sortDir]);
 
   const stats = useMemo(() => {
     if (!clients) return { total: 0, active: 0, pending: 0 };
@@ -45,6 +100,17 @@ export default function DashboardPage() {
     'all', 'packet1_sent', 'packet1_submitted', 'packet1_approved',
     'contract_sent', 'contract_signed', 'payment_pending', 'active', 'archived',
   ];
+
+  const SortIcon = ({ column }: { column: SortKey }) => {
+    const isActive = sortKey === column;
+    return (
+      <span className={`inline-flex ml-1 ${isActive ? 'text-[#6B3A5E]' : 'text-[#C0A8B4]'}`}>
+        {isActive && sortDir === 'desc' ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+      </span>
+    );
+  };
+
+  const thClass = "text-left px-6 py-3.5 text-xs font-semibold text-[#8B7080] uppercase tracking-wider cursor-pointer select-none hover:text-[#6B3A5E] transition-colors";
 
   return (
     <div className="p-4 md:p-8">
@@ -143,11 +209,21 @@ export default function DashboardPage() {
           <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-[#E8D8E0]">
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-[#8B7080] uppercase tracking-wider">Client</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-[#8B7080] uppercase tracking-wider">Email</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-[#8B7080] uppercase tracking-wider">Status</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-[#8B7080] uppercase tracking-wider">Service</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-[#8B7080] uppercase tracking-wider">Added</th>
+                <th className={thClass} onClick={() => handleSort('name')}>
+                  Client<SortIcon column="name" />
+                </th>
+                <th className={thClass} onClick={() => handleSort('email')}>
+                  Email<SortIcon column="email" />
+                </th>
+                <th className={thClass} onClick={() => handleSort('status')}>
+                  Status<SortIcon column="status" />
+                </th>
+                <th className={thClass} onClick={() => handleSort('service')}>
+                  Service<SortIcon column="service" />
+                </th>
+                <th className={thClass} onClick={() => handleSort('added')}>
+                  Added<SortIcon column="added" />
+                </th>
               </tr>
             </thead>
             <tbody>
