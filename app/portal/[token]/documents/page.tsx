@@ -13,7 +13,7 @@ import { Check, FileText, PenTool, ChevronRight, Sparkles, AlertCircle, FlaskCon
 import { generateAllTestData } from '@/lib/test-data';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import FillableDocument, { splitIntoParagraphs, parseParagraph, isDoulaField } from '@/components/portal/fillable-document';
+import FillableDocument, { splitIntoParagraphs, parseParagraph, propagateDoulaStatus, isDoulaField } from '@/components/portal/fillable-document';
 
 export default function DocumentsPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
@@ -44,8 +44,9 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
       const keys = new Set<string>();
       const paras = splitIntoParagraphs(doc.html_content);
       const kc: Record<string, number> = {};
-      for (const p of paras) {
-        const parsed = parseParagraph(p, kc);
+      const allParsed = paras.map((p) => parseParagraph(p, kc));
+      propagateDoulaStatus(allParsed);
+      for (const parsed of allParsed) {
         if (parsed.checkboxField?.isDoula) keys.add(parsed.checkboxField.key);
         for (const seg of parsed.segments) {
           if (seg.type === 'field' && seg.field.isDoula) keys.add(seg.field.key);

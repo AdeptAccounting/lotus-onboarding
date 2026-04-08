@@ -19,9 +19,40 @@ function slugify(text: string): string {
     .slice(0, 60);
 }
 
-// Check if a field label/key is a doula-only field
+// Check if a field label/key is a doula-only field (signing/identity fields only)
 function isDoulaField(label: string): boolean {
-  return /doula/i.test(label);
+  // Only match doula signing/identity fields, NOT client questions about doula services
+  // Matches: "Doula Name", "Doula's Name", "Doula Signature", "Full Spectrum Doula Signature", etc.
+  // Does NOT match: "Would you like the doula to support you..."
+  return /\bdoula[''\u2019]?s?\s+(name|signature|date|initials)\b/i.test(label)
+      || /\b(name|signature|date|initials)\s+(of\s+(the\s+)?)?doula\b/i.test(label);
+}
+
+// After parsing all paragraphs, propagate doula status to Date fields that follow doula fields
+function propagateDoulaStatus(parsed: ParsedParagraph[]): void {
+  let lastFieldWasDoula = false;
+  for (const para of parsed) {
+    if (para.checkboxField) {
+      if (para.checkboxField.isDoula) {
+        lastFieldWasDoula = true;
+      } else if (lastFieldWasDoula && /^date$/i.test(para.checkboxField.label.trim())) {
+        para.checkboxField.isDoula = true;
+      } else {
+        lastFieldWasDoula = false;
+      }
+      continue;
+    }
+    for (const seg of para.segments) {
+      if (seg.type !== 'field') continue;
+      if (seg.field.isDoula) {
+        lastFieldWasDoula = true;
+      } else if (lastFieldWasDoula && /^date$/i.test(seg.field.label.trim())) {
+        seg.field.isDoula = true;
+      } else {
+        lastFieldWasDoula = false;
+      }
+    }
+  }
 }
 
 // Split HTML into paragraph blocks
@@ -122,9 +153,10 @@ function parseParagraph(rawHtml: string, keyCounter: Record<string, number>): Pa
       if (i < htmlParts.length - 1) {
         // Derive label from the preceding text (strip tags, take last meaningful words)
         const precedingText = htmlPart.replace(/<[^>]+>/g, '').trim();
-        // Take the last phrase/label before the blank
-        const labelMatch = precedingText.match(/([A-Z][a-zA-Z\s]+?)\s*$/);
-        const label = labelMatch ? labelMatch[1].replace(/[:?]/g, '').trim() : `Field ${i + 1}`;
+        // Strip trailing punctuation then take the last capitalized phrase
+        const cleanedText = precedingText.replace(/[^a-zA-Z\s''\u2019]+$/, '').trim();
+        const labelMatch = cleanedText.match(/([A-Z][a-zA-Z\s''\u2019]+)\s*$/);
+        const label = labelMatch ? labelMatch[1].trim() : `Field ${i + 1}`;
 
         const baseKey = slugify(label);
         const count = keyCounter[baseKey] ?? 0;
@@ -146,7 +178,7 @@ function parseParagraph(rawHtml: string, keyCounter: Record<string, number>): Pa
 }
 
 // Export parsing for use by test-data.ts and documents page
-export { slugify, splitIntoParagraphs, parseParagraph, isDoulaField };
+export { slugify, splitIntoParagraphs, parseParagraph, propagateDoulaStatus, isDoulaField };
 export type { InlineField, ParsedParagraph };
 
 export default function FillableDocument({
@@ -166,6 +198,7 @@ export default function FillableDocument({
   const paragraphs = splitIntoParagraphs(html_content);
   const keyCounter: Record<string, number> = {};
   const parsed = paragraphs.map((p) => parseParagraph(p, keyCounter));
+  propagateDoulaStatus(parsed);
 
   return (
     <div className="space-y-4">

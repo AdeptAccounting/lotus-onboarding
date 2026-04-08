@@ -8,6 +8,7 @@
 import {
   splitIntoParagraphs,
   parseParagraph,
+  propagateDoulaStatus,
   isDoulaField,
   type InlineField,
 } from '@/components/portal/fillable-document';
@@ -93,6 +94,7 @@ export function generateAllTestData(documents: DocumentInput[]): {
     const paragraphs = splitIntoParagraphs(doc.html_content);
     const keyCounter: Record<string, number> = {};
     const parsed = paragraphs.map((p) => parseParagraph(p, keyCounter));
+    propagateDoulaStatus(parsed);
 
     const docForm: Record<string, string> = {};
 
