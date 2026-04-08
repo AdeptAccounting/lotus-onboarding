@@ -14,10 +14,13 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ token
   const sendMessage = usePortalSendMessage(token);
   const [text, setText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   if (isLoading || !client) {
@@ -44,14 +47,19 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ token
   );
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col h-full">
-      <h1 className="text-xl font-semibold text-[#6B3A5E] mb-2">Messages</h1>
-      <p className="text-sm text-[#8B7080] mb-6">Chat with your care team.</p>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
+      <div className="mb-4">
+        <h1 className="text-xl font-semibold text-[#6B3A5E]">Messages</h1>
+        <p className="text-sm text-[#8B7080] mt-1">Chat with your care team.</p>
+      </div>
 
-      {/* Message Thread */}
-      <div className="flex-1 space-y-3 mb-4 min-h-[200px]">
+      {/* Message Thread — fixed height, scrollable */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto rounded-2xl bg-white border border-[#E8D8E0]/50 p-4 sm:p-6"
+      >
         {sorted.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-[#E8D8E0]/50">
+          <div className="flex flex-col items-center justify-center h-full">
             <div className="w-14 h-14 rounded-full bg-[#F5EDF1] flex items-center justify-center mb-3">
               <MessageSquare size={22} className="text-[#B5648A]" />
             </div>
@@ -59,42 +67,44 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ token
             <p className="text-sm text-[#8B7080] mt-1">Send a message to get started.</p>
           </div>
         ) : (
-          sorted.map((msg) => {
-            const isClient = msg.actor === 'client';
-            return (
-              <div key={msg.id} className={`flex ${isClient ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[90%] sm:max-w-[75%] ${isClient ? 'order-2' : ''}`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    {!isClient && (
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#D4A0BB] to-[#B5648A] flex items-center justify-center">
-                        <span className="text-white text-[10px] font-semibold">F</span>
-                      </div>
-                    )}
-                    <span className="text-xs text-[#8B7080]">
-                      {isClient ? 'You' : 'Femeika'} &middot; {new Date(msg.created_at).toLocaleDateString('en-US', {
-                        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-                      })}
-                    </span>
-                  </div>
-                  <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    isClient
-                      ? 'bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white rounded-br-md'
-                      : 'bg-white border border-[#E8D8E0]/50 text-[#5C4A42] rounded-bl-md'
-                  }`}>
-                    <p className="whitespace-pre-wrap">
-                      {(msg.details as { message?: string })?.message ?? ''}
-                    </p>
+          <div className="space-y-4">
+            {sorted.map((msg) => {
+              const isClient = msg.actor === 'client';
+              return (
+                <div key={msg.id} className={`flex ${isClient ? 'justify-end' : 'justify-start'}`}>
+                  <div className="max-w-[85%] sm:max-w-[70%]">
+                    <div className={`flex items-center gap-2 mb-1 ${isClient ? 'justify-end' : ''}`}>
+                      {!isClient && (
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#D4A0BB] to-[#B5648A] flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-[10px] font-semibold">F</span>
+                        </div>
+                      )}
+                      <span className="text-[11px] text-[#8B7080]">
+                        {isClient ? 'You' : 'Femeika'} &middot; {new Date(msg.created_at).toLocaleDateString('en-US', {
+                          month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      isClient
+                        ? 'bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white rounded-br-md'
+                        : 'bg-[#F5EDF1] text-[#5C4A42] rounded-bl-md'
+                    }`}>
+                      <p className="whitespace-pre-wrap">
+                        {(msg.details as { message?: string })?.message ?? ''}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+            <div ref={bottomRef} />
+          </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
-      {/* Message Input */}
-      <div className="sticky bottom-0 bg-gradient-to-t from-[#FDF8F5] via-[#FDF8F5] pt-2">
+      {/* Message Input — pinned at bottom */}
+      <div className="pt-3 flex-shrink-0">
         <div className="flex gap-2 items-end bg-white rounded-2xl border border-[#E8D8E0]/50 p-3 shadow-sm">
           <textarea
             value={text}

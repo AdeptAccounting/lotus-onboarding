@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useRef, useMemo } from 'react';
+import { use, useState, useRef, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useClient,
@@ -1115,11 +1115,19 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
 
   // Documents state
   const pipelineFileRef = useRef<HTMLInputElement>(null);
+  const pipelineMsgRef = useRef<HTMLDivElement>(null);
   const [pipelineUploading, setPipelineUploading] = useState(false);
   const [pipelineStorageError, setPipelineStorageError] = useState<string | null>(null);
 
   // Document preview state
   const [previewDoc, setPreviewDoc] = useState<{ open: boolean; url: string; name: string }>({ open: false, url: '', name: '' });
+
+  // Auto-scroll messages to bottom
+  useEffect(() => {
+    if (pipelineMsgRef.current) {
+      pipelineMsgRef.current.scrollTop = pipelineMsgRef.current.scrollHeight;
+    }
+  }, [activity]);
 
   // Activity collapse state
   const [activityOpen, setActivityOpen] = useState(false);
@@ -1601,7 +1609,7 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                   (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
                 );
                 return messages.length > 0 ? (
-                  <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-hidden">
+                  <div ref={pipelineMsgRef} className="space-y-2 max-h-[500px] overflow-y-auto overflow-x-hidden scroll-smooth">
                     {messages.map((msg) => {
                       const isFromClient = msg.actor === 'client';
                       return (
