@@ -48,6 +48,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
   // Build set of doula field keys per document so we can exclude them from completion checks
   const doulaFieldKeys = useMemo(() => {
     const map: Record<string, Set<string>> = {};
+    if (!documents) return map;
     for (const doc of documents) {
       const keys = new Set<string>();
       const paras = splitIntoParagraphs(doc.html_content);
