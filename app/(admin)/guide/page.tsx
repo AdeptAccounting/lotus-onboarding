@@ -295,7 +295,7 @@ const SECTIONS = [
           </div>
           <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
             <MessageSquare size={14} className="text-[#B5648A] flex-shrink-0" />
-            <p className="text-xs text-[#5C4A42]"><strong>Portal update email</strong> (optional) sent when you send a message, upload a document, or set a payment link, if you choose &quot;Yes, Notify&quot;</p>
+            <p className="text-xs text-[#5C4A42]"><strong>Portal update email</strong> (optional) sent when you upload a document, if you choose &quot;Yes, Notify&quot;</p>
           </div>
           <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
             <CreditCard size={14} className="text-[#B5648A] flex-shrink-0" />
