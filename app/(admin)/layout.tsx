@@ -156,18 +156,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <nav className="flex-1 p-4 space-y-1">
               {navItems.map((item) => {
                 const isClientDetailPage = /^\/clients\/[^/]+/.test(pathname);
-                const fromParam = isClientDetailPage && typeof window !== 'undefined'
-                  ? new URLSearchParams(window.location.search).get('from')
-                  : null;
                 let isActive: boolean;
                 if (isClientDetailPage) {
-                  if (item.href === '/dashboard') {
-                    isActive = fromParam === 'dashboard' || !fromParam;
-                  } else if (item.href === '/clients') {
-                    isActive = fromParam === 'clients';
-                  } else {
-                    isActive = false;
-                  }
+                  // Client detail pages always highlight the Clients tab
+                  isActive = item.href === '/clients';
                 } else {
                   isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                 }
