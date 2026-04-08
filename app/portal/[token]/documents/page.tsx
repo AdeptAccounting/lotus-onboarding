@@ -35,17 +35,8 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
     return new Set(existingSignatures?.map((s) => s.document_id) || []);
   }, [existingSignatures]);
 
-  if (isLoading || !documents || !client) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Sparkles size={24} className="text-[#B5648A] animate-pulse" />
-      </div>
-    );
-  }
-
-  const activeDoc = documents[activeDocIndex];
-
   // Build set of doula field keys per document so we can exclude them from completion checks
+  // Must be before early return to satisfy React's Rules of Hooks
   const doulaFieldKeys = useMemo(() => {
     const map: Record<string, Set<string>> = {};
     if (!documents) return map;
@@ -64,6 +55,16 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
     }
     return map;
   }, [documents]);
+
+  if (isLoading || !documents || !client) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Sparkles size={24} className="text-[#B5648A] animate-pulse" />
+      </div>
+    );
+  }
+
+  const activeDoc = documents[activeDocIndex];
 
   // Check if a document has fillable fields that need completing (excludes doula fields)
   const hasFilledFields = (docId: string): boolean => {
