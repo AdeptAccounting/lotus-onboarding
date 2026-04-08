@@ -1102,6 +1102,9 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
   // Notes & Messages state
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState('');
+  const editNote = useEditNote();
   const [messageOpen, setMessageOpen] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [notifyDialog, setNotifyDialog] = useState<{
@@ -1114,6 +1117,9 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
   const pipelineFileRef = useRef<HTMLInputElement>(null);
   const [pipelineUploading, setPipelineUploading] = useState(false);
   const [pipelineStorageError, setPipelineStorageError] = useState<string | null>(null);
+
+  // Document preview state
+  const [previewDoc, setPreviewDoc] = useState<{ open: boolean; url: string; name: string }>({ open: false, url: '', name: '' });
 
   // Activity collapse state
   const [activityOpen, setActivityOpen] = useState(false);
@@ -1705,17 +1711,41 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                 const notes = activity?.filter((e) => e.action === 'note_added') ?? [];
                 return notes.length > 0 ? (
                   <div className="space-y-2 pt-1">
-                    {notes.map((note) => (
-                      <div key={note.id} className="p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">{(note.details as { note?: string })?.note ?? ''}</p>
-                            <p className="text-xs text-[#8B7080] mt-1.5">{new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
-                          </div>
-                          <button onClick={() => deleteNote.mutateAsync({ noteId: note.id, clientId }).then(() => toast.success('Note deleted')).catch(() => toast.error('Failed to delete'))} className="p-1 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"><Trash2 size={13} /></button>
+                    {notes.map((note) => {
+                      const noteContent = (note.details as { note?: string })?.note ?? '';
+                      const isEditing = editingNoteId === note.id;
+                      return (
+                        <div key={note.id} className="p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <textarea
+                                value={editingNoteText}
+                                onChange={(e) => setEditingNoteText(e.target.value)}
+                                rows={3}
+                                className="w-full rounded-xl border border-[#E8D8E0] bg-white px-3 py-2 text-sm text-[#5C4A42] focus:outline-none focus:border-[#B5648A] resize-none"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <Button variant="outline" size="sm" onClick={() => { setEditingNoteId(null); setEditingNoteText(''); }} className="rounded-xl border-[#E8D8E0] text-[#8B7080] text-xs h-7">Cancel</Button>
+                                <Button size="sm" onClick={async () => { if (!editingNoteText.trim()) return; try { await editNote.mutateAsync({ noteId: note.id, note: editingNoteText.trim(), clientId }); toast.success('Note updated'); setEditingNoteId(null); setEditingNoteText(''); } catch { toast.error('Failed to update'); } }} disabled={!editingNoteText.trim() || editNote.isPending} className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs h-7">
+                                  {editNote.isPending ? 'Saving...' : 'Save'}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">{noteContent}</p>
+                                <p className="text-xs text-[#8B7080] mt-1.5">{new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                              </div>
+                              <div className="flex items-center gap-0.5 flex-shrink-0">
+                                <button onClick={() => { setEditingNoteId(note.id); setEditingNoteText(noteContent); }} className="p-1 rounded-lg text-[#C0A8B4] hover:text-[#6B3A5E] hover:bg-[#F5EDF1] transition-colors" title="Edit note"><Edit2 size={13} /></button>
+                                <button onClick={() => deleteNote.mutateAsync({ noteId: note.id, clientId }).then(() => toast.success('Note deleted')).catch(() => toast.error('Failed to delete'))} className="p-1 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete note"><Trash2 size={13} /></button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : null;
               })()}
@@ -1789,10 +1819,11 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                             </div>
                           </div>
                           <div className="flex items-center gap-1 ml-4 flex-shrink-0">
+                            <button onClick={() => setPreviewDoc({ open: true, url, name: doc.file_name })} className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors" title="Preview document"><Eye size={14} /></button>
                             <button onClick={() => toggleVisibility.mutate({ docId: doc.id, visible: !doc.visible_to_client, clientId })} className={`p-2 rounded-lg transition-colors ${doc.visible_to_client ? 'text-[#B5648A] hover:bg-[#F5EDF1]' : 'text-[#C0A8B4] hover:bg-[#F5EDF1] hover:text-[#8B7080]'}`} title={doc.visible_to_client ? 'Visible to client — click to hide' : 'Hidden from client — click to share'}>
-                              {doc.visible_to_client ? <Eye size={14} /> : <EyeOff size={14} />}
+                              {doc.visible_to_client ? <Bell size={14} /> : <EyeOff size={14} />}
                             </button>
-                            <a href={url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"><Download size={14} /></a>
+                            <a href={url} download={doc.file_name} className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors" title="Download"><Download size={14} /></a>
                           </div>
                         </div>
                       );
@@ -2012,6 +2043,34 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
         signedAt={viewerDoc.signedAt}
         ipAddress={viewerDoc.ipAddress}
       />
+
+      {/* Uploaded Document Preview Modal */}
+      {previewDoc.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setPreviewDoc({ open: false, url: '', name: '' })}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-[#E8D8E0]">
+              <h3 className="text-sm font-semibold text-[#6B3A5E] truncate">{previewDoc.name}</h3>
+              <div className="flex items-center gap-2">
+                <a href={previewDoc.url} download={previewDoc.name} className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors" title="Download"><Download size={16} /></a>
+                <button onClick={() => setPreviewDoc({ open: false, url: '', name: '' })} className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"><X size={16} /></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-1">
+              {previewDoc.name.toLowerCase().endsWith('.pdf') ? (
+                <iframe src={previewDoc.url} className="w-full h-[75vh] rounded-lg" />
+              ) : previewDoc.name.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? (
+                <img src={previewDoc.url} alt={previewDoc.name} className="max-w-full max-h-[75vh] mx-auto object-contain" />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <FileText size={32} className="text-[#8B7080] mb-3" />
+                  <p className="text-sm text-[#8B7080] mb-4">Preview not available for this file type</p>
+                  <a href={previewDoc.url} download={previewDoc.name} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-sm"><Download size={14} />Download to view</a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
