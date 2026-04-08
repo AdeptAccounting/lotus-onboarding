@@ -301,6 +301,23 @@ export function useDeleteNote() {
   });
 }
 
+export function useEditNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ noteId, note, clientId }: { noteId: string; note: string; clientId: string }) => {
+      const { error } = await getSupabase()
+        .from('onboarding_activity_log')
+        .update({ details: { note } })
+        .eq('id', noteId);
+      if (error) throw error;
+      return { noteId, clientId };
+    },
+    onSuccess: ({ clientId }) => {
+      queryClient.invalidateQueries({ queryKey: ['activity', clientId] });
+    },
+  });
+}
+
 export function useAddMessage(clientId: string) {
   const queryClient = useQueryClient();
   return useMutation({

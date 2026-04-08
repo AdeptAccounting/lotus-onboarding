@@ -12,6 +12,7 @@ import {
   useConfirmPayment,
   useAddNote,
   useDeleteNote,
+  useEditNote,
   useAddMessage,
   useDeleteMessage,
   useSavePaymentLink,
@@ -216,6 +217,7 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
   const updateClient = useUpdateClient();
   const addNote = useAddNote(clientId);
   const deleteNote = useDeleteNote();
+  const editNote = useEditNote();
   const addMessage = useAddMessage(clientId);
   const deleteMessage = useDeleteMessage();
   const { data: uploadedDocs } = useUploadedDocuments(clientId);
@@ -239,6 +241,11 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
   // Notes tab state
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState('');
+
+  // Document preview state
+  const [previewDoc, setPreviewDoc] = useState<{ open: boolean; url: string; name: string }>({ open: false, url: '', name: '' });
 
   // Messages tab state
   const [messageOpen, setMessageOpen] = useState(false);
@@ -332,6 +339,18 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
       toast.success('Note deleted');
     } catch {
       toast.error('Failed to delete note');
+    }
+  };
+
+  const handleEditNote = async (noteId: string) => {
+    if (!editingNoteText.trim()) return;
+    try {
+      await editNote.mutateAsync({ noteId, note: editingNoteText.trim(), clientId });
+      toast.success('Note updated');
+      setEditingNoteId(null);
+      setEditingNoteText('');
+    } catch {
+      toast.error('Failed to update note');
     }
   };
 
@@ -723,6 +742,13 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
                         </div>
                         <div className="flex items-center gap-1 ml-4 flex-shrink-0">
                           <button
+                            onClick={() => setPreviewDoc({ open: true, url, name: doc.file_name })}
+                            className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
+                            title="Preview document"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
                             onClick={() => toggleVisibility.mutate({ docId: doc.id, visible: !doc.visible_to_client, clientId })}
                             className={`p-2 rounded-lg transition-colors ${
                               doc.visible_to_client
@@ -731,13 +757,13 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
                             }`}
                             title={doc.visible_to_client ? 'Visible to client — click to hide' : 'Hidden from client — click to share'}
                           >
-                            {doc.visible_to_client ? <Eye size={14} /> : <EyeOff size={14} />}
+                            {doc.visible_to_client ? <Bell size={14} /> : <EyeOff size={14} />}
                           </button>
                           <a
                             href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            download={doc.file_name}
                             className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
+                            title="Download"
                           >
                             <Download size={14} />
                           </a>
@@ -811,33 +837,75 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
             </div>
           ) : (
             <div className="space-y-3">
-              {notes.map((note) => (
-                <div
-                  key={note.id}
-                  className="bg-white rounded-2xl border border-[#E8D8E0]/50 shadow-sm p-5"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">
-                        {(note.details as { note?: string })?.note ?? ''}
-                      </p>
-                      <p className="text-xs text-[#8B7080] mt-2">
-                        {new Date(note.created_at).toLocaleDateString('en-US', {
-                          month: 'short', day: 'numeric', year: 'numeric',
-                          hour: 'numeric', minute: '2-digit',
-                        })}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteNote(note.id)}
-                      className="p-1.5 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
-                      title="Delete note"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+              {notes.map((note) => {
+                const noteContent = (note.details as { note?: string })?.note ?? '';
+                const isEditing = editingNoteId === note.id;
+                return (
+                  <div
+                    key={note.id}
+                    className="bg-white rounded-2xl border border-[#E8D8E0]/50 shadow-sm p-5"
+                  >
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <textarea
+                          value={editingNoteText}
+                          onChange={(e) => setEditingNoteText(e.target.value)}
+                          rows={4}
+                          className="w-full rounded-xl border border-[#E8D8E0] bg-[#FDF8F5] px-3 py-2.5 text-sm text-[#5C4A42] focus:outline-none focus:border-[#B5648A] resize-none"
+                        />
+                        <div className="flex items-center gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => { setEditingNoteId(null); setEditingNoteText(''); }}
+                            className="rounded-xl border-[#E8D8E0] text-[#8B7080] text-xs h-8"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleEditNote(note.id)}
+                            disabled={!editingNoteText.trim() || editNote.isPending}
+                            className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs h-8"
+                          >
+                            {editNote.isPending ? 'Saving...' : 'Save'}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">
+                            {noteContent}
+                          </p>
+                          <p className="text-xs text-[#8B7080] mt-2">
+                            {new Date(note.created_at).toLocaleDateString('en-US', {
+                              month: 'short', day: 'numeric', year: 'numeric',
+                              hour: 'numeric', minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => { setEditingNoteId(note.id); setEditingNoteText(noteContent); }}
+                            className="p-1.5 rounded-lg text-[#C0A8B4] hover:text-[#6B3A5E] hover:bg-[#F5EDF1] transition-colors"
+                            title="Edit note"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNote(note.id)}
+                            className="p-1.5 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors"
+                            title="Delete note"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -956,6 +1024,53 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
         signedAt={viewerDoc.signedAt}
         ipAddress={viewerDoc.ipAddress}
       />
+
+      {/* Uploaded Document Preview Modal */}
+      {previewDoc.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setPreviewDoc({ open: false, url: '', name: '' })}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-[#E8D8E0]">
+              <h3 className="text-sm font-semibold text-[#6B3A5E] truncate">{previewDoc.name}</h3>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewDoc.url}
+                  download={previewDoc.name}
+                  className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
+                  title="Download"
+                >
+                  <Download size={16} />
+                </a>
+                <button
+                  onClick={() => setPreviewDoc({ open: false, url: '', name: '' })}
+                  className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-1">
+              {previewDoc.name.toLowerCase().endsWith('.pdf') ? (
+                <iframe src={previewDoc.url} className="w-full h-[75vh] rounded-lg" />
+              ) : previewDoc.name.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? (
+                <img src={previewDoc.url} alt={previewDoc.name} className="max-w-full max-h-[75vh] mx-auto object-contain" />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <FileText size={32} className="text-[#8B7080] mb-3" />
+                  <p className="text-sm text-[#8B7080] mb-4">Preview not available for this file type</p>
+                  <a
+                    href={previewDoc.url}
+                    download={previewDoc.name}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-sm"
+                  >
+                    <Download size={14} />
+                    Download to view
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
