@@ -9,7 +9,7 @@ export type ClientStatus =
   | 'active'
   | 'archived';
 
-export type ServiceType = 'birth_doula' | 'postpartum_doula' | 'death_doula';
+export type ServiceType = 'birth_doula' | 'postpartum_doula' | 'death_doula' | 'full_spectrum_doula';
 
 export type DocumentType = 'intake_form' | 'legal_notice' | 'contract';
 
@@ -49,6 +49,7 @@ export interface OnboardingDocument {
   html_content: string;
   has_fillable_fields: boolean;
   requires_signature: boolean;
+  requires_doula_signature: boolean;
   sort_order: number;
   created_at: string;
 }
@@ -58,6 +59,7 @@ export interface OnboardingSignature {
   client_id: string;
   document_id: string;
   signer_name: string;
+  signer_role: 'client' | 'doula';
   signature_image: string | null;
   ip_address: string | null;
   user_agent: string | null;
@@ -140,9 +142,10 @@ export const STATUS_COLORS: Record<ClientStatus, string> = {
 };
 
 export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
+  full_spectrum_doula: 'Full Spectrum Doula',
+  death_doula: 'Death Doula',
   birth_doula: 'Birth Doula',
   postpartum_doula: 'Postpartum Doula',
-  death_doula: 'Death Doula',
 };
 
 export const PIPELINE_STEPS: { status: ClientStatus; label: string }[] = [

@@ -74,7 +74,7 @@ export function useClientActivity(clientId: string) {
 export function useCreateClient() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (client: { first_name: string; last_name: string; email: string; phone?: string; notes?: string }) => {
+    mutationFn: async (client: { first_name: string; last_name: string; email: string; phone?: string; service_type?: string; notes?: string }) => {
       const { data, error } = await getSupabase()
         .from('onboarding_clients')
         .insert({

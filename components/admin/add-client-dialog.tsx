@@ -7,8 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateClient } from '@/hooks/useClients';
+import { SERVICE_TYPE_LABELS, type ServiceType } from '@/types';
 import { toast } from 'sonner';
 import { UserPlus } from 'lucide-react';
+
+const DOULA_TYPES: ServiceType[] = ['full_spectrum_doula', 'death_doula'];
 
 export function AddClientDialog() {
   const [open, setOpen] = useState(false);
@@ -16,6 +19,7 @@ export function AddClientDialog() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [serviceType, setServiceType] = useState<ServiceType | ''>('');
   const [notes, setNotes] = useState('');
   const createClient = useCreateClient();
 
@@ -27,6 +31,7 @@ export function AddClientDialog() {
         last_name: lastName,
         email,
         phone: phone || undefined,
+        service_type: serviceType || undefined,
         notes: notes || undefined,
       });
       toast.success('Client added!', { description: `Welcome email sent to ${email}` });
@@ -35,6 +40,7 @@ export function AddClientDialog() {
       setLastName('');
       setEmail('');
       setPhone('');
+      setServiceType('');
       setNotes('');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong';
@@ -90,14 +96,30 @@ export function AddClientDialog() {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-[#5C4A42] text-sm">Phone</Label>
-            <Input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="(555) 123-4567"
-              className="rounded-xl border-[#E8D8E0] focus:border-[#B5648A]"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[#5C4A42] text-sm">Phone</Label>
+              <Input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="(555) 123-4567"
+                className="rounded-xl border-[#E8D8E0] focus:border-[#B5648A]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[#5C4A42] text-sm">Doula Type *</Label>
+              <select
+                value={serviceType}
+                onChange={(e) => setServiceType(e.target.value as ServiceType | '')}
+                required
+                className="w-full h-9 px-3 rounded-xl border border-[#E8D8E0] bg-white text-sm text-[#5C4A42] focus:border-[#B5648A] focus:outline-none focus:ring-1 focus:ring-[#B5648A]/20"
+              >
+                <option value="">Select type...</option>
+                {DOULA_TYPES.map((key) => (
+                  <option key={key} value={key}>{SERVICE_TYPE_LABELS[key]}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="space-y-1.5">

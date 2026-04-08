@@ -1,6 +1,7 @@
 'use client';
 
-import { use, useState, useRef } from 'react';
+import { use, useState, useRef, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useClient,
   useClientSignatures,
@@ -56,12 +57,14 @@ import {
   Bell,
   Loader2,
   ChevronDown,
+  PenTool,
 } from 'lucide-react';
 import Link from 'next/link';
 import { NotifyClientDialog } from '@/components/admin/notify-client-dialog';
 import { DocumentViewerDialog } from '@/components/admin/document-viewer';
 
 const SERVICE_ICONS: Record<ServiceType, React.ReactNode> = {
+  full_spectrum_doula: <Flower2 size={20} />,
   birth_doula: <Baby size={20} />,
   postpartum_doula: <Heart size={20} />,
   death_doula: <Flower2 size={20} />,
@@ -962,6 +965,7 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
 function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnType<typeof useClient>['data']>; clientId: string }) {
   const { data: signatures } = useClientSignatures(clientId);
   const { data: activity } = useClientActivity(clientId);
+  const queryClient = useQueryClient();
   const approvePacket1 = useApprovePacket1();
   const sendContract = useSendContract();
   const confirmPayment = useConfirmPayment();
@@ -998,6 +1002,70 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
 
   // Activity collapse state
   const [activityOpen, setActivityOpen] = useState(false);
+
+  // Doula signature state
+  const [doulaSigningDocId, setDoulaSigningDocId] = useState<string | null>(null);
+  const [doulaSignatureName, setDoulaSignatureName] = useState('');
+  const [doulaSignatureSubmitting, setDoulaSignatureSubmitting] = useState(false);
+
+  // Fetch documents that require doula signature
+  const { data: doulaSignDocs } = useQuery({
+    queryKey: ['doula-sign-docs', clientId],
+    queryFn: async () => {
+      const supabase = createSupabaseClient();
+      // Get document IDs that client has signed
+      const { data: clientSigs } = await supabase
+        .from('onboarding_signatures')
+        .select('document_id')
+        .eq('client_id', clientId)
+        .eq('signer_role', 'client');
+      const signedDocIds = clientSigs?.map((s) => s.document_id) ?? [];
+      if (signedDocIds.length === 0) return [];
+
+      // Get those documents if they require doula signature
+      const { data: docs } = await supabase
+        .from('onboarding_documents')
+        .select('id, name')
+        .eq('requires_doula_signature', true)
+        .in('id', signedDocIds);
+      return docs ?? [];
+    },
+    enabled: client.status === 'packet1_submitted',
+  });
+
+  // Check which docs already have doula signatures
+  const doulaSignedDocIds = useMemo(() => {
+    return new Set(
+      signatures?.filter((s) => s.signer_role === 'doula').map((s) => s.document_id) ?? []
+    );
+  }, [signatures]);
+
+  const pendingDoulaDocs = doulaSignDocs?.filter((d) => !doulaSignedDocIds.has(d.id)) ?? [];
+  const allDoulaDocsSigned = doulaSignDocs ? doulaSignDocs.length > 0 && pendingDoulaDocs.length === 0 : true;
+
+  const handleDoulaSign = async (documentId: string) => {
+    if (!doulaSignatureName.trim()) return;
+    setDoulaSignatureSubmitting(true);
+    try {
+      const supabase = createSupabaseClient();
+      await supabase.from('onboarding_signatures').insert({
+        client_id: clientId,
+        document_id: documentId,
+        signer_name: doulaSignatureName,
+        signer_role: 'doula',
+        signed_at: new Date().toISOString(),
+      });
+      queryClient.invalidateQueries({ queryKey: ['signatures', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['doula-sign-docs', clientId] });
+      setDoulaSigningDocId(null);
+      setDoulaSignatureName('');
+      toast.success('Document signed!');
+    } catch {
+      toast.error('Failed to sign document');
+    } finally {
+      setDoulaSignatureSubmitting(false);
+    }
+  };
 
   // Document viewer state
   const [viewerDoc, setViewerDoc] = useState<{
@@ -1121,25 +1189,101 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                 {signatures && signatures.length > 0 && (
                   <div className="space-y-2 mb-4">
                     {signatures
-                      .filter((s) => s.document?.document_type !== 'contract')
+                      .filter((s) => s.document?.document_type !== 'contract' && s.signer_role !== 'doula')
                       .map((sig) => (
                         <div key={sig.id} className="flex items-center gap-2 text-sm">
                           <CheckCircle2 size={14} className="text-green-600" />
                           <span className="text-[#5C4A42]">{sig.document?.name}</span>
                           <span className="text-[#8B7080] text-xs">
-                            Signed {new Date(sig.signed_at).toLocaleDateString()}
+                            Signed by client {new Date(sig.signed_at).toLocaleDateString()}
                           </span>
                         </div>
                       ))}
                   </div>
                 )}
+
+                {/* Doula Signature Section */}
+                {doulaSignDocs && doulaSignDocs.length > 0 && (
+                  <div className="mb-4 p-4 rounded-xl border border-amber-200 bg-amber-50/50">
+                    <p className="text-sm font-medium text-amber-800 mb-3 flex items-center gap-2">
+                      <PenTool size={14} />
+                      Documents requiring your signature
+                    </p>
+                    <div className="space-y-3">
+                      {doulaSignDocs.map((doc) => {
+                        const isSigned = doulaSignedDocIds.has(doc.id);
+                        const isSigningThis = doulaSigningDocId === doc.id;
+                        return (
+                          <div key={doc.id}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm">
+                                {isSigned ? (
+                                  <CheckCircle2 size={14} className="text-green-600" />
+                                ) : (
+                                  <FileText size={14} className="text-amber-600" />
+                                )}
+                                <span className="text-[#5C4A42]">{doc.name}</span>
+                              </div>
+                              {isSigned ? (
+                                <span className="text-xs text-green-700 font-medium">Signed</span>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setDoulaSigningDocId(isSigningThis ? null : doc.id)}
+                                  className="rounded-lg text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                                >
+                                  {isSigningThis ? 'Cancel' : 'Sign'}
+                                </Button>
+                              )}
+                            </div>
+                            {isSigningThis && (
+                              <div className="mt-3 p-3 rounded-lg bg-white border border-[#E8D8E0] space-y-3">
+                                <div className="space-y-1.5">
+                                  <Label className="text-[#5C4A42] text-sm font-medium">Your Full Legal Name</Label>
+                                  <Input
+                                    value={doulaSignatureName}
+                                    onChange={(e) => setDoulaSignatureName(e.target.value)}
+                                    placeholder="Type your full legal name"
+                                    className="rounded-xl border-[#E8D8E0] focus:border-[#B5648A]"
+                                  />
+                                </div>
+                                {doulaSignatureName && (
+                                  <div className="p-3 rounded-lg bg-[#FDF8F5] border border-[#E8D8E0]">
+                                    <p className="text-xs text-[#8B7080] mb-1">Signature Preview</p>
+                                    <p className="text-xl text-[#6B3A5E] italic" style={{ fontFamily: 'Georgia, serif' }}>
+                                      {doulaSignatureName}
+                                    </p>
+                                  </div>
+                                )}
+                                <Button
+                                  onClick={() => handleDoulaSign(doc.id)}
+                                  disabled={!doulaSignatureName.trim() || doulaSignatureSubmitting}
+                                  className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-sm"
+                                >
+                                  {doulaSignatureSubmitting ? 'Signing...' : 'Sign Document'}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <Button
                   onClick={handleApprove}
-                  disabled={approvePacket1.isPending}
+                  disabled={approvePacket1.isPending || !allDoulaDocsSigned}
                   className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white"
                 >
                   {approvePacket1.isPending ? 'Approving...' : 'Approve Packet 1'}
                 </Button>
+                {!allDoulaDocsSigned && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    Sign all required documents above before approving.
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}

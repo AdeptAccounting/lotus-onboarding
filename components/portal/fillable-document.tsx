@@ -126,19 +126,7 @@ export default function FillableDocument({
     [formData, onChange]
   );
 
-  // For non-intake docs, render read-only
-  if (document_type !== 'intake_form') {
-    return (
-      <div
-        className="prose prose-sm max-w-none text-[#5C4A42]
-          [&_h1]:text-[#6B3A5E] [&_h2]:text-[#6B3A5E] [&_h3]:text-[#6B3A5E]
-          [&_strong]:text-[#5C4A42] [&_li]:text-[#5C4A42]"
-        dangerouslySetInnerHTML={{ __html: html_content }}
-      />
-    );
-  }
-
-  // Parse and render fillable form
+  // Parse and render fillable form (all document types go through the parser)
   const paragraphs = splitIntoParagraphs(html_content);
   const keyCounter: Record<string, number> = {};
   const fields = paragraphs.map((p) => parseLine(p, keyCounter));

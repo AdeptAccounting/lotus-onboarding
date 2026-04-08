@@ -65,10 +65,7 @@ export function NotificationBell() {
                       await supabase
                         .from('onboarding_activity_log')
                         .update({ read_by_admin: true })
-                        .eq('client_id', item.clientId)
-                        .eq('action', 'message_sent')
-                        .eq('actor', 'client')
-                        .eq('read_by_admin', false);
+                        .eq('id', item.id);
                       queryClient.invalidateQueries({ queryKey: ['notifications'] });
                       queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
                       queryClient.invalidateQueries({ queryKey: ['activity', item.clientId] });

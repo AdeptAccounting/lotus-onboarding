@@ -43,27 +43,30 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
   }
 
   const activeDoc = documents[activeDocIndex];
-  const isIntakeDoc = activeDoc?.document_type === 'intake_form';
 
-  // For intake forms, check that all fields have been filled in
-  // We do a simple heuristic: the form data object must exist and have at least some keys
-  const getIntakeFormReady = (docId: string): boolean => {
+  // Check if a document has fillable fields that need completing
+  const hasFilledFields = (docId: string): boolean => {
     const docFormData = allFormData[docId];
-    if (!docFormData) return false;
-    const values = Object.values(docFormData);
-    return values.length > 0 && values.every((v) => v.trim() !== '');
+    if (!docFormData || Object.keys(docFormData).length === 0) return false;
+    return Object.values(docFormData).every((v) => v.trim() !== '');
   };
 
-  const isDocReady = (docId: string, docType: string): boolean => {
+  // Check if a document has any fillable content (fields were detected by the parser)
+  const hasFillableContent = (docId: string): boolean => {
+    const docFormData = allFormData[docId];
+    return !!docFormData && Object.keys(docFormData).length > 0;
+  };
+
+  const isDocReady = (docId: string): boolean => {
     if (signedDocIds.has(docId)) return true;
     const hasSig = !!(signatures[docId] && agreements[docId]);
-    if (docType === 'intake_form') {
-      return hasSig && getIntakeFormReady(docId);
+    if (hasFillableContent(docId)) {
+      return hasSig && hasFilledFields(docId);
     }
     return hasSig;
   };
 
-  const allSigned = documents.every((doc) => isDocReady(doc.id, doc.document_type));
+  const allSigned = documents.every((doc) => isDocReady(doc.id));
 
   const handleFormDataChange = (docId: string, data: Record<string, string>) => {
     setAllFormData((prev) => ({ ...prev, [docId]: data }));
@@ -77,29 +80,24 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
 
     setSubmitting(true);
     try {
-      // Save intake form responses
-      const intakeDocs = documents.filter(
-        (doc) => doc.document_type === 'intake_form' && !signedDocIds.has(doc.id)
+      // Save form responses for all documents with filled fields
+      const docsWithFormData = documents.filter(
+        (doc) => !signedDocIds.has(doc.id) && allFormData[doc.id] && Object.keys(allFormData[doc.id]).length > 0
       );
 
-      if (intakeDocs.length > 0) {
-        const intakeInserts = intakeDocs
-          .filter((doc) => allFormData[doc.id] && Object.keys(allFormData[doc.id]).length > 0)
-          .map((doc) => ({
-            client_id: client.id,
-            document_id: doc.id,
-            form_data: allFormData[doc.id],
-            submitted_at: new Date().toISOString(),
-          }));
+      if (docsWithFormData.length > 0) {
+        const intakeInserts = docsWithFormData.map((doc) => ({
+          client_id: client.id,
+          document_id: doc.id,
+          form_data: allFormData[doc.id],
+          submitted_at: new Date().toISOString(),
+        }));
 
-        if (intakeInserts.length > 0) {
-          const { error: intakeError } = await supabase
-            .from('onboarding_intake_responses')
-            .insert(intakeInserts);
-          if (intakeError) {
-            console.error('Intake response error:', intakeError);
-            // Non-fatal — continue with signatures
-          }
+        const { error: intakeError } = await supabase
+          .from('onboarding_intake_responses')
+          .insert(intakeInserts);
+        if (intakeError) {
+          console.error('Intake response error:', intakeError);
         }
       }
 
@@ -168,7 +166,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
         {/* Document Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {documents.map((doc, i) => {
-            const done = isDocReady(doc.id, doc.document_type);
+            const done = isDocReady(doc.id);
             const isActive = i === activeDocIndex;
 
             return (
@@ -205,7 +203,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
                 <div className="p-6 border-b border-[#E8D8E0]">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-base font-semibold text-[#6B3A5E]">{activeDoc.name}</h2>
-                    {isIntakeDoc && (
+                    {activeDoc.has_fillable_fields && (
                       <span className="text-xs px-2.5 py-1 rounded-full bg-[#F5EDF1] text-[#B5648A] font-medium border border-[#E8D8E0]">
                         Fill Out Required
                       </span>
@@ -221,10 +219,10 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
                     />
                   </div>
 
-                  {/* Intake form completion indicator */}
-                  {isIntakeDoc && !signedDocIds.has(activeDoc.id) && (
+                  {/* Form completion indicator */}
+                  {hasFillableContent(activeDoc.id) && !signedDocIds.has(activeDoc.id) && (
                     <div className="mt-4">
-                      {getIntakeFormReady(activeDoc.id) ? (
+                      {hasFilledFields(activeDoc.id) ? (
                         <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-100">
                           <Check size={13} />
                           All fields completed
@@ -253,14 +251,14 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {/* Intake form gate */}
-                      {isIntakeDoc && !getIntakeFormReady(activeDoc.id) && (
+                      {/* Fillable form gate */}
+                      {hasFillableContent(activeDoc.id) && !hasFilledFields(activeDoc.id) && (
                         <div className="p-3 rounded-xl bg-[#F5EDF1] border border-[#E8D8E0] text-xs text-[#8B7080]">
                           Complete all form fields above to unlock signing.
                         </div>
                       )}
 
-                      <div className={`space-y-1.5 ${isIntakeDoc && !getIntakeFormReady(activeDoc.id) ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div className={`space-y-1.5 ${hasFillableContent(activeDoc.id) && !hasFilledFields(activeDoc.id) ? 'opacity-50 pointer-events-none' : ''}`}>
                         <Label className="text-[#5C4A42] text-sm font-medium">Your Full Legal Name</Label>
                         <Input
                           value={signatures[activeDoc.id] || ''}
@@ -272,7 +270,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
                         />
                       </div>
 
-                      {signatures[activeDoc.id] && (!isIntakeDoc || getIntakeFormReady(activeDoc.id)) && (
+                      {signatures[activeDoc.id] && (!hasFillableContent(activeDoc.id) || hasFilledFields(activeDoc.id)) && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
@@ -290,7 +288,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
                         </motion.div>
                       )}
 
-                      <label className={`flex items-start gap-3 cursor-pointer ${isIntakeDoc && !getIntakeFormReady(activeDoc.id) ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <label className={`flex items-start gap-3 cursor-pointer ${hasFillableContent(activeDoc.id) && !hasFilledFields(activeDoc.id) ? 'opacity-50 pointer-events-none' : ''}`}>
                         <input
                           type="checkbox"
                           checked={agreements[activeDoc.id] || false}

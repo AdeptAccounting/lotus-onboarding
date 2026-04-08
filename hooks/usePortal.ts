@@ -42,11 +42,13 @@ export function usePortalDocuments(token: string, documentType?: string) {
 
       if (documentType === 'contract') {
         query = query.eq('document_type', 'contract');
-        if (client?.service_type) {
-          query = query.eq('service_type', client.service_type);
-        }
       } else {
         query = query.neq('document_type', 'contract');
+      }
+
+      // Filter ALL documents by client's service_type (show matching + universal docs)
+      if (client?.service_type) {
+        query = query.or(`service_type.eq.${client.service_type},service_type.is.null`);
       }
 
       const { data, error } = await query;
