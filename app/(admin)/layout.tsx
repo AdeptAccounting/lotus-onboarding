@@ -158,8 +158,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 const isClientDetailPage = /^\/clients\/[^/]+/.test(pathname);
                 let isActive: boolean;
                 if (isClientDetailPage) {
-                  // Client detail pages always highlight the Clients tab
-                  isActive = item.href === '/clients';
+                  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+                  const from = params?.get('from');
+                  const status = params?.get('status');
+                  // Active clients → Clients tab; pipeline clients from dashboard → Dashboard tab
+                  if (from === 'dashboard' && status !== 'active') {
+                    isActive = item.href === '/dashboard';
+                  } else {
+                    isActive = item.href === '/clients';
+                  }
                 } else {
                   isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                 }
