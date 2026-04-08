@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Check, FileText, PenTool, ChevronRight, Sparkles, AlertCircle } from 'lucide-react';
+import { Check, FileText, PenTool, ChevronRight, Sparkles, AlertCircle, FlaskConical } from 'lucide-react';
+import { generateAllTestData } from '@/lib/test-data';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import FillableDocument from '@/components/portal/fillable-document';
@@ -67,6 +68,16 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
   };
 
   const allSigned = documents.every((doc) => isDocReady(doc.id));
+
+  // ── Test data fill (remove when done testing) ──
+  const handleFillTestData = () => {
+    if (!documents) return;
+    const testData = generateAllTestData(documents);
+    setAllFormData(testData.formData);
+    setSignatures(testData.signatures);
+    setAgreements(testData.agreements);
+    toast.success('Test data filled for all documents');
+  };
 
   const handleFormDataChange = (docId: string, data: Record<string, string>) => {
     setAllFormData((prev) => ({ ...prev, [docId]: data }));
@@ -159,9 +170,19 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
     <div>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-xl font-semibold text-[#6B3A5E] mb-2">Intake Documents</h1>
-        <p className="text-sm text-[#8B7080] mb-6">
-          Please review and complete each document below. All documents must be filled out and signed to proceed.
-        </p>
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-sm text-[#8B7080]">
+            Please review and complete each document below. All documents must be filled out and signed to proceed.
+          </p>
+          {/* Remove this button when done testing */}
+          <button
+            onClick={handleFillTestData}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#B5648A]/10 text-[#B5648A] border border-[#B5648A]/20 hover:bg-[#B5648A]/20 transition-colors shrink-0 ml-4"
+          >
+            <FlaskConical size={13} />
+            Fill Test Data
+          </button>
+        </div>
 
         {/* Document Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
