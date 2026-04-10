@@ -272,6 +272,72 @@ export function useActiveClients() {
   });
 }
 
+export function useArchivedClients() {
+  return useQuery({
+    queryKey: ['clients', 'archived'],
+    queryFn: async () => {
+      const { data, error } = await getSupabase()
+        .from('onboarding_clients')
+        .select('*')
+        .eq('status', 'archived')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as OnboardingClient[];
+    },
+  });
+}
+
+/**
+ * Archive or unarchive a client. Archive sets status='archived' and stamps an
+ * activity log entry; unarchive flips the client back to whatever status was
+ * recorded at archive time (or 'active' as a safe default if none was stored).
+ */
+export function useArchiveClient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      clientId,
+      action,
+      previousStatus,
+    }: {
+      clientId: string;
+      action: 'archive' | 'unarchive';
+      // For archive: the status the client was at before, so we can restore on
+      // unarchive. For unarchive: the status to restore to.
+      previousStatus?: ClientStatus;
+    }) => {
+      const newStatus: ClientStatus = action === 'archive' ? 'archived' : (previousStatus ?? 'active');
+
+      const { data, error } = await getSupabase()
+        .from('onboarding_clients')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', clientId)
+        .select()
+        .single();
+      if (error) throw error;
+
+      await getSupabase().from('onboarding_activity_log').insert({
+        client_id: clientId,
+        action: action === 'archive' ? 'client_archived' : 'client_unarchived',
+        details: action === 'archive'
+          ? { previous_status: previousStatus ?? null }
+          : { restored_to: newStatus },
+        actor: 'admin',
+      });
+
+      return data as OnboardingClient;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['activity', data.id] });
+    },
+  });
+}
+
 export function useAddNote(clientId: string) {
   const queryClient = useQueryClient();
   return useMutation({

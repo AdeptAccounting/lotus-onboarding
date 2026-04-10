@@ -19,6 +19,7 @@ import {
   useUploadedDocuments,
   useToggleDocumentVisibility,
   useMarkMessagesRead,
+  useArchiveClient,
 } from '@/hooks/useClients';
 import { createClient as createSupabaseClient } from '@/lib/supabase/client';
 import { PipelineStepper } from '@/components/admin/pipeline-stepper';
@@ -58,10 +59,20 @@ import {
   Loader2,
   ChevronDown,
   PenTool,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
 import Link from 'next/link';
 import { NotifyClientDialog } from '@/components/admin/notify-client-dialog';
 import { DocumentViewerDialog } from '@/components/admin/document-viewer';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 
 const SERVICE_ICONS: Record<ServiceType, React.ReactNode> = {
   full_spectrum_doula: <Flower2 size={20} />,
@@ -2281,7 +2292,10 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
 
 export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const { data: client, isLoading } = useClient(id);
+  const archiveClient = useArchiveClient();
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
 
   if (isLoading || !client) {
     return (
@@ -2292,8 +2306,35 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   }
 
   const isActive = client.status === 'active';
-  const backHref = isActive ? '/clients' : '/dashboard';
-  const backLabel = isActive ? 'Back to Clients' : 'Back to Dashboard';
+  const isArchived = client.status === 'archived';
+  const backHref = isActive ? '/clients' : isArchived ? '/clients?view=archived' : '/dashboard';
+  const backLabel = isActive ? 'Back to Clients' : isArchived ? 'Back to Archived' : 'Back to Dashboard';
+
+  const handleArchiveConfirm = async () => {
+    try {
+      if (isArchived) {
+        // Restore from archived state. We don't currently track the previous
+        // status anywhere durable, so default to 'active' as a safe restore.
+        await archiveClient.mutateAsync({
+          clientId: client.id,
+          action: 'unarchive',
+          previousStatus: 'active',
+        });
+        toast.success(`${client.first_name} restored to Active`);
+      } else {
+        await archiveClient.mutateAsync({
+          clientId: client.id,
+          action: 'archive',
+          previousStatus: client.status,
+        });
+        toast.success(`${client.first_name} archived`);
+      }
+      setArchiveDialogOpen(false);
+      router.push(isArchived ? '/clients' : '/clients?view=archived');
+    } catch {
+      toast.error('Failed to update client');
+    }
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">
@@ -2332,6 +2373,19 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
               {SERVICE_TYPE_LABELS[client.service_type]}
             </Badge>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setArchiveDialogOpen(true)}
+            className={`rounded-xl text-xs h-8 gap-1.5 ${
+              isArchived
+                ? 'border-green-200 text-green-700 hover:bg-green-50'
+                : 'border-[#E8D8E0] text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E]'
+            }`}
+          >
+            {isArchived ? <ArchiveRestore size={13} /> : <Archive size={13} />}
+            {isArchived ? 'Unarchive' : 'Archive'}
+          </Button>
         </div>
       </div>
 
@@ -2341,6 +2395,64 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       ) : (
         <PipelineClientView client={client} clientId={id} />
       )}
+
+      {/* Archive / Unarchive confirmation */}
+      <Dialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#6B3A5E] flex items-center gap-2">
+              {isArchived ? (
+                <>
+                  <ArchiveRestore size={18} className="text-green-600" />
+                  Unarchive {client.first_name}?
+                </>
+              ) : (
+                <>
+                  <Archive size={18} className="text-[#B5648A]" />
+                  Archive {client.first_name}?
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[#5C4A42] leading-relaxed">
+            {isArchived ? (
+              <>
+                This will restore <strong>{client.first_name} {client.last_name}</strong> to your active
+                clients list. Their documents, signatures, and history are preserved.
+              </>
+            ) : (
+              <>
+                This hides <strong>{client.first_name} {client.last_name}</strong> from the dashboard and
+                active clients list. All documents, signatures, and history are preserved — you can
+                unarchive them at any time from the Archived view.
+              </>
+            )}
+          </p>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setArchiveDialogOpen(false)}
+              className="rounded-xl border-[#E8D8E0] text-[#8B7080]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleArchiveConfirm}
+              disabled={archiveClient.isPending}
+              className={`rounded-xl text-white gap-1.5 ${
+                isArchived
+                  ? 'bg-gradient-to-r from-green-600 to-green-700'
+                  : 'bg-gradient-to-r from-[#B5648A] to-[#9B4D73]'
+              }`}
+            >
+              {isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+              {archiveClient.isPending
+                ? (isArchived ? 'Restoring...' : 'Archiving...')
+                : (isArchived ? 'Unarchive' : 'Archive')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
