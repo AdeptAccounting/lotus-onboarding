@@ -22,7 +22,7 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
 
   const isVerifyPage = pathname === `/portal/${token}/verify`;
   const isMessagesPage = pathname === `/portal/${token}/messages`;
-  const containerMaxWidth = isMessagesPage ? 'max-w-5xl' : 'max-w-3xl';
+  const containerMaxWidth = isMessagesPage ? 'max-w-7xl' : 'max-w-3xl';
 
   useEffect(() => {
     if (isVerifyPage) {

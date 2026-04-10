@@ -1186,6 +1186,44 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
   const pendingDoulaDocs = doulaSignDocs?.filter((d) => !doulaSignedDocIds.has(d.id)) ?? [];
   const allDoulaDocsSigned = doulaSignDocs ? doulaSignDocs.length > 0 && pendingDoulaDocs.length === 0 : true;
 
+  // Fetch contract documents so Femeika can pre-sign before sending
+  const { data: contractDocs } = useQuery({
+    queryKey: ['contract-docs'],
+    queryFn: async () => {
+      const supabase = createSupabaseClient();
+      const { data } = await supabase
+        .from('onboarding_documents')
+        .select('id, name, service_type')
+        .eq('document_type', 'contract');
+      return (data ?? []) as Array<{ id: string; name: string; service_type: ServiceType | null }>;
+    },
+    enabled: client.status === 'packet1_approved',
+  });
+
+  const selectedContract = useMemo(
+    () => contractDocs?.find((d) => d.service_type === selectedService) ?? null,
+    [contractDocs, selectedService]
+  );
+
+  const contractDoulaSigned = useMemo(
+    () =>
+      !!selectedContract &&
+      (signatures ?? []).some(
+        (s) => s.document_id === selectedContract.id && s.signer_role === 'doula'
+      ),
+    [signatures, selectedContract]
+  );
+
+  const contractDoulaSignature = useMemo(
+    () =>
+      selectedContract
+        ? (signatures ?? []).find(
+            (s) => s.document_id === selectedContract.id && s.signer_role === 'doula'
+          ) ?? null
+        : null,
+    [signatures, selectedContract]
+  );
+
   const handleDoulaSign = async (documentId: string) => {
     if (!doulaSignatureName.trim()) return;
     setDoulaSignatureSubmitting(true);
@@ -1284,6 +1322,10 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
   const handleSendContract = async () => {
     if (!selectedService || !paymentAmount) {
       toast.error('Please select a service type and enter the payment amount');
+      return;
+    }
+    if (!contractDoulaSigned) {
+      toast.error('Sign your portion of the contract before sending');
       return;
     }
     try {
@@ -1494,14 +1536,114 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                     />
                   </div>
                 </div>
+
+                {/* Doula Signature Section — Femeika must sign before sending */}
+                {selectedContract && (
+                  <div className="mb-4 p-4 rounded-xl border border-amber-200 bg-amber-50/50">
+                    <p className="text-sm font-medium text-amber-800 mb-3 flex items-center gap-2">
+                      <PenTool size={14} />
+                      Sign your portion of the contract
+                    </p>
+                    {contractDoulaSigned && contractDoulaSignature ? (
+                      <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle2 size={14} className="text-green-600" />
+                        <span className="text-[#5C4A42]">
+                          Signed as <span className="font-medium">{contractDoulaSignature.signer_name}</span> on{' '}
+                          {new Date(contractDoulaSignature.signed_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2 text-sm">
+                            <FileText size={14} className="text-amber-600" />
+                            <span className="text-[#5C4A42]">{selectedContract.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() =>
+                                setViewerDoc({
+                                  open: true,
+                                  documentId: selectedContract.id,
+                                  signerName: '',
+                                  signedAt: '',
+                                  ipAddress: null,
+                                })
+                              }
+                              className="p-1.5 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors"
+                              title="Preview contract"
+                            >
+                              <Eye size={14} />
+                            </button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                setDoulaSigningDocId(
+                                  doulaSigningDocId === selectedContract.id ? null : selectedContract.id
+                                )
+                              }
+                              className="rounded-lg text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                            >
+                              {doulaSigningDocId === selectedContract.id ? 'Cancel' : 'Sign'}
+                            </Button>
+                          </div>
+                        </div>
+                        {doulaSigningDocId === selectedContract.id && (
+                          <div className="mt-3 p-3 rounded-lg bg-white border border-[#E8D8E0] space-y-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-[#5C4A42] text-sm font-medium">Your Full Legal Name</Label>
+                              <Input
+                                value={doulaSignatureName}
+                                onChange={(e) => setDoulaSignatureName(e.target.value)}
+                                placeholder="Type your full legal name"
+                                className="rounded-xl border-[#E8D8E0] focus:border-[#B5648A]"
+                              />
+                            </div>
+                            {doulaSignatureName && (
+                              <div className="p-3 rounded-lg bg-[#FDF8F5] border border-[#E8D8E0]">
+                                <p className="text-xs text-[#8B7080] mb-1">Signature Preview</p>
+                                <p className="text-xl text-[#6B3A5E] italic" style={{ fontFamily: 'Georgia, serif' }}>
+                                  {doulaSignatureName}
+                                </p>
+                              </div>
+                            )}
+                            <Button
+                              onClick={() => handleDoulaSign(selectedContract.id)}
+                              disabled={!doulaSignatureName.trim() || doulaSignatureSubmitting}
+                              className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-sm"
+                            >
+                              {doulaSignatureSubmitting ? 'Signing...' : 'Sign Contract'}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Button
                   onClick={handleSendContract}
-                  disabled={sendContract.isPending || !selectedService || !paymentAmount}
+                  disabled={
+                    sendContract.isPending ||
+                    !selectedService ||
+                    !paymentAmount ||
+                    !contractDoulaSigned
+                  }
                   className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white gap-2"
                 >
                   <Send size={16} />
                   {sendContract.isPending ? 'Sending...' : 'Send Contract'}
                 </Button>
+                {selectedService && !contractDoulaSigned && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    Sign your portion of the contract above before sending.
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
