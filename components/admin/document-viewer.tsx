@@ -132,15 +132,19 @@ function placeSignatures(html: string, sigs: SignatureRecord[]): string {
   const clientSig = sigs.find((s) => s.signer_role === 'client');
 
   // ── Doula: fill Doula Name → Doula Signature → Date ──
+  // NOTE: the in-between class is `[^_]*?` (NOT `[^_<]*?`) so the lazy matcher
+  // can walk past closing HTML tags like `</strong>` between the label and
+  // the underscore run. The previous version excluded `<`, which made the
+  // regex fail on contracts where the label is wrapped in <strong>.
   if (doulaSig) {
     // Doula Name (printed name)
-    const doulaNameRegex = /([A-Za-z\s]*Doula[A-Za-z\s'\u2019]*Name[^_<]*?)(_{3,})/i;
+    const doulaNameRegex = /([A-Za-z\s]*Doula[A-Za-z\s'\u2019]*Name[^_]*?)(_{3,})/i;
     if (doulaNameRegex.test(result)) {
       result = result.replace(doulaNameRegex, `$1${makeSigBlock(doulaSig.signer_name)}`);
     }
 
     // Doula Signature
-    const doulaSigRegex = /([A-Za-z\s]*Doula[A-Za-z\s'\u2019]*Signature[^_<]*?)(_{3,})/i;
+    const doulaSigRegex = /([A-Za-z\s]*Doula[A-Za-z\s'\u2019]*Signature[^_]*?)(_{3,})/i;
     if (doulaSigRegex.test(result)) {
       result = result.replace(doulaSigRegex, `$1${makeSigBlock(doulaSig.signer_name)}`);
       // Fill the very next Date underscore run after the doula signature
@@ -148,8 +152,8 @@ function placeSignatures(html: string, sigs: SignatureRecord[]): string {
       const idx = result.lastIndexOf(marker);
       if (idx >= 0) {
         const after = result.slice(idx);
-        if (/(Date[^_<]*?)(_{3,})/i.test(after)) {
-          const replaced = after.replace(/(Date[^_<]*?)(_{3,})/i, `$1${makeDateBlock(doulaSig.signed_at)}`);
+        if (/(Date[^_]*?)(_{3,})/i.test(after)) {
+          const replaced = after.replace(/(Date[^_]*?)(_{3,})/i, `$1${makeDateBlock(doulaSig.signed_at)}`);
           result = result.slice(0, idx) + replaced;
         }
       }
@@ -159,19 +163,19 @@ function placeSignatures(html: string, sigs: SignatureRecord[]): string {
   // ── Client: fill Client Name → Client Signature → Date ──
   if (clientSig) {
     // Client Name (printed name)
-    const clientNameRegex = /(Client[A-Za-z\s'\u2019]*Name[^_<]*?)(_{3,})/i;
+    const clientNameRegex = /(Client[A-Za-z\s'\u2019]*Name[^_]*?)(_{3,})/i;
     if (clientNameRegex.test(result)) {
       result = result.replace(clientNameRegex, `$1${makeSigBlock(clientSig.signer_name)}`);
     }
 
     // Client Signature (or fallback to first plain Signature not preceded by Doula)
-    const clientSigRegex = /(Client[A-Za-z\s'\u2019]*Signature[^_<]*?)(_{3,})/i;
+    const clientSigRegex = /(Client[A-Za-z\s'\u2019]*Signature[^_]*?)(_{3,})/i;
     let placed = false;
     if (clientSigRegex.test(result)) {
       result = result.replace(clientSigRegex, `$1${makeSigBlock(clientSig.signer_name)}`);
       placed = true;
     } else {
-      const genericSig = /((?<!Doula[\s'\u2019]*)(?:^|[^a-zA-Z])Signature[^_<]*?)(_{3,})/i;
+      const genericSig = /((?<!Doula[\s'\u2019]*)(?:^|[^a-zA-Z])Signature[^_]*?)(_{3,})/i;
       if (genericSig.test(result)) {
         result = result.replace(genericSig, `$1${makeSigBlock(clientSig.signer_name)}`);
         placed = true;
@@ -182,8 +186,8 @@ function placeSignatures(html: string, sigs: SignatureRecord[]): string {
       const idx = result.lastIndexOf(marker);
       if (idx >= 0) {
         const after = result.slice(idx);
-        if (/(Date[^_<]*?)(_{3,})/i.test(after)) {
-          const replaced = after.replace(/(Date[^_<]*?)(_{3,})/i, `$1${makeDateBlock(clientSig.signed_at)}`);
+        if (/(Date[^_]*?)(_{3,})/i.test(after)) {
+          const replaced = after.replace(/(Date[^_]*?)(_{3,})/i, `$1${makeDateBlock(clientSig.signed_at)}`);
           result = result.slice(0, idx) + replaced;
         }
       }
