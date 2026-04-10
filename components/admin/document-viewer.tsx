@@ -34,7 +34,7 @@ interface DocumentViewerProps {
 const filledSpan = (value: string) =>
   `<span style="border-bottom:1px solid #6B3A5E;padding:0 4px;font-weight:500;color:#6B3A5E">${value}</span>`;
 
-const emptySpan = '<em style="color:#C0A8B4">Not provided</em>';
+const emptySpan = '<span style="display:inline-block;min-width:120px;border-bottom:1px solid #E8D8E0">&nbsp;</span>';
 
 /** Replace underscores and checkbox symbols in raw HTML with filled values inline. */
 function fillHtmlInline(rawHtml: string, formData: Record<string, string>): string {
@@ -131,18 +131,24 @@ function placeSignatures(html: string, sigs: SignatureRecord[]): string {
   const doulaSig = sigs.find((s) => s.signer_role === 'doula');
   const clientSig = sigs.find((s) => s.signer_role === 'client');
 
-  // Doula signature first — match labels containing "doula" before "Signature"
+  // ── Doula: fill Doula Name → Doula Signature → Date ──
   if (doulaSig) {
+    // Doula Name (printed name)
+    const doulaNameRegex = /([A-Za-z\s]*Doula[A-Za-z\s'\u2019]*Name[^_<]*?)(_{3,})/i;
+    if (doulaNameRegex.test(result)) {
+      result = result.replace(doulaNameRegex, `$1${makeSigBlock(doulaSig.signer_name)}`);
+    }
+
+    // Doula Signature
     const doulaSigRegex = /([A-Za-z\s]*Doula[A-Za-z\s'\u2019]*Signature[^_<]*?)(_{3,})/i;
-    const m = result.match(doulaSigRegex);
-    if (m) {
+    if (doulaSigRegex.test(result)) {
       result = result.replace(doulaSigRegex, `$1${makeSigBlock(doulaSig.signer_name)}`);
-      // Fill the very next Date underscore run after this point
-      const idx = result.indexOf(makeSigBlock(doulaSig.signer_name));
+      // Fill the very next Date underscore run after the doula signature
+      const marker = makeSigBlock(doulaSig.signer_name);
+      const idx = result.lastIndexOf(marker);
       if (idx >= 0) {
         const after = result.slice(idx);
-        const dateMatch = after.match(/(Date[^_<]*?)(_{3,})/i);
-        if (dateMatch) {
+        if (/(Date[^_<]*?)(_{3,})/i.test(after)) {
           const replaced = after.replace(/(Date[^_<]*?)(_{3,})/i, `$1${makeDateBlock(doulaSig.signed_at)}`);
           result = result.slice(0, idx) + replaced;
         }
@@ -150,15 +156,21 @@ function placeSignatures(html: string, sigs: SignatureRecord[]): string {
     }
   }
 
-  // Client signature — match "Client Signature" or first plain "Signature" line that isn't doula
+  // ── Client: fill Client Name → Client Signature → Date ──
   if (clientSig) {
+    // Client Name (printed name)
+    const clientNameRegex = /(Client[A-Za-z\s'\u2019]*Name[^_<]*?)(_{3,})/i;
+    if (clientNameRegex.test(result)) {
+      result = result.replace(clientNameRegex, `$1${makeSigBlock(clientSig.signer_name)}`);
+    }
+
+    // Client Signature (or fallback to first plain Signature not preceded by Doula)
     const clientSigRegex = /(Client[A-Za-z\s'\u2019]*Signature[^_<]*?)(_{3,})/i;
     let placed = false;
     if (clientSigRegex.test(result)) {
       result = result.replace(clientSigRegex, `$1${makeSigBlock(clientSig.signer_name)}`);
       placed = true;
     } else {
-      // Fallback: first remaining "Signature" line that isn't preceded by "Doula"
       const genericSig = /((?<!Doula[\s'\u2019]*)(?:^|[^a-zA-Z])Signature[^_<]*?)(_{3,})/i;
       if (genericSig.test(result)) {
         result = result.replace(genericSig, `$1${makeSigBlock(clientSig.signer_name)}`);
@@ -166,11 +178,11 @@ function placeSignatures(html: string, sigs: SignatureRecord[]): string {
       }
     }
     if (placed) {
-      const idx = result.indexOf(makeSigBlock(clientSig.signer_name));
+      const marker = makeSigBlock(clientSig.signer_name);
+      const idx = result.lastIndexOf(marker);
       if (idx >= 0) {
         const after = result.slice(idx);
-        const dateMatch = after.match(/(Date[^_<]*?)(_{3,})/i);
-        if (dateMatch) {
+        if (/(Date[^_<]*?)(_{3,})/i.test(after)) {
           const replaced = after.replace(/(Date[^_<]*?)(_{3,})/i, `$1${makeDateBlock(clientSig.signed_at)}`);
           result = result.slice(0, idx) + replaced;
         }
