@@ -22,7 +22,9 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
 
   const isVerifyPage = pathname === `/portal/${token}/verify`;
   const isMessagesPage = pathname === `/portal/${token}/messages`;
-  const containerMaxWidth = isMessagesPage ? 'max-w-7xl' : 'max-w-3xl';
+  // Messages page goes nearly edge-to-edge so the chat thread isn't squeezed
+  // into a narrow column. Other portal pages stay at the original max-w-3xl.
+  const containerMaxWidth = isMessagesPage ? 'max-w-none' : 'max-w-3xl';
 
   useEffect(() => {
     if (isVerifyPage) {
