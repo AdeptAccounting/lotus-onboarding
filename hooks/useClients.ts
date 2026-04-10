@@ -257,32 +257,6 @@ export function useSendContract() {
   });
 }
 
-/**
- * Returns the set of `service_type` values that have a ready contract document
- * (`document_type='contract' AND has_fillable_fields=true`). The admin "Send
- * Contract" UI uses this to enable/disable service type buttons so the user
- * can only pick service types whose contracts are authored.
- */
-export function useAvailableContractServiceTypes() {
-  return useQuery({
-    queryKey: ['contracts', 'available-service-types'],
-    queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('onboarding_documents')
-        .select('service_type')
-        .eq('document_type', 'contract')
-        .eq('has_fillable_fields', true);
-      if (error) throw error;
-      const set = new Set<ServiceType>();
-      for (const row of (data ?? []) as { service_type: ServiceType | null }[]) {
-        if (row.service_type) set.add(row.service_type);
-      }
-      return set;
-    },
-    staleTime: 60_000,
-  });
-}
-
 export function useActiveClients() {
   return useQuery({
     queryKey: ['clients', 'active'],

@@ -9,7 +9,7 @@ export type ClientStatus =
   | 'active'
   | 'archived';
 
-export type ServiceType = 'birth_doula' | 'postpartum_doula' | 'death_doula' | 'full_spectrum_doula';
+export type ServiceType = 'death_doula' | 'full_spectrum_doula';
 
 export type DocumentType = 'intake_form' | 'legal_notice' | 'contract';
 
@@ -144,8 +144,6 @@ export const STATUS_COLORS: Record<ClientStatus, string> = {
 export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   full_spectrum_doula: 'Full Spectrum Doula',
   death_doula: 'Death Doula',
-  birth_doula: 'Birth Doula',
-  postpartum_doula: 'Postpartum Doula',
 };
 
 export const PIPELINE_STEPS: { status: ClientStatus; label: string }[] = [

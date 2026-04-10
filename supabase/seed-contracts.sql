@@ -15,8 +15,8 @@ UPDATE onboarding_documents SET
   requires_doula_signature = false
 WHERE slug = 'death-doula-contract';
 
--- Postpartum Doula contract is a stub — keep the row but mark it not-ready
--- so the admin UI hides it as 'Coming soon' (admin filters by
--- has_fillable_fields=true via useAvailableContractServiceTypes()).
-UPDATE onboarding_documents SET has_fillable_fields = false
-WHERE slug = 'postpartum-doula-contract';
+-- Birth Doula and Postpartum Doula are not offered services for Lotus.
+-- Drop any stale contract rows so the data matches the codebase
+-- (ServiceType union is now full_spectrum_doula | death_doula only).
+DELETE FROM onboarding_documents
+WHERE service_type IN ('birth_doula', 'postpartum_doula');

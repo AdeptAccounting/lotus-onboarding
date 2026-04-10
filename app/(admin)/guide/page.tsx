@@ -94,7 +94,7 @@ const SECTIONS = [
             <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#B5648A] text-white text-xs font-semibold flex items-center justify-center">4</span>
             <div>
               <p className="font-medium text-[#5C4A42] text-sm">Select the service type and send the contract</p>
-              <p className="text-xs text-[#8B7080]">Choose Birth Doula, Postpartum Doula, or Death Doula. Enter the payment amount. Click &quot;Send Contract&quot;. The client gets an email with a link to sign their contract.</p>
+              <p className="text-xs text-[#8B7080]">Choose Full Spectrum Doula or Death Doula. Enter the payment amount. Click &quot;Send Contract&quot;. The client gets an email with a link to sign their contract.</p>
             </div>
           </li>
           <li className="flex gap-3">
