@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useDocument, useIntakeResponse } from '@/hooks/useClients';
+import { useDocument, useIntakeResponse, useClientSignatures } from '@/hooks/useClients';
 import { Printer, Loader2, FileText, PenTool } from 'lucide-react';
 import {
   splitIntoParagraphs,
@@ -23,8 +23,9 @@ interface DocumentViewerProps {
   onOpenChange: (open: boolean) => void;
   clientId: string;
   documentId: string;
-  signerName: string;
-  signedAt: string;
+  // Kept for backwards compatibility with call sites; signatures are now fetched internally
+  signerName?: string;
+  signedAt?: string;
   ipAddress?: string | null;
 }
 
@@ -101,48 +102,100 @@ function fillHtmlInline(rawHtml: string, formData: Record<string, string>): stri
   return filledParagraphs.join('');
 }
 
+interface SignatureRecord {
+  signer_name: string;
+  signer_role: 'client' | 'doula';
+  signed_at: string;
+}
+
+function formatSigDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function makeSigBlock(name: string): string {
+  return `<span style="border-bottom:1px solid #6B3A5E;padding:0 4px;font-family:Georgia,serif;font-style:italic;font-size:1.1em;color:#6B3A5E">${name}</span>`;
+}
+
+function makeDateBlock(iso: string): string {
+  return `<span style="border-bottom:1px solid #6B3A5E;padding:0 4px;color:#6B3A5E">${formatSigDate(iso)}</span>`;
+}
+
+/**
+ * Place each signature on its appropriate line based on signer_role.
+ * Doula sigs land on the first "Doula Signature" line; client sigs land on
+ * the first non-doula "Signature" line. Date placeholders following each
+ * signature line are filled with that signer's date.
+ */
+function placeSignatures(html: string, sigs: SignatureRecord[]): string {
+  let result = html;
+  const doulaSig = sigs.find((s) => s.signer_role === 'doula');
+  const clientSig = sigs.find((s) => s.signer_role === 'client');
+
+  // Doula signature first — match labels containing "doula" before "Signature"
+  if (doulaSig) {
+    const doulaSigRegex = /([A-Za-z\s]*Doula[A-Za-z\s'\u2019]*Signature[^_<]*?)(_{3,})/i;
+    const m = result.match(doulaSigRegex);
+    if (m) {
+      result = result.replace(doulaSigRegex, `$1${makeSigBlock(doulaSig.signer_name)}`);
+      // Fill the very next Date underscore run after this point
+      const idx = result.indexOf(makeSigBlock(doulaSig.signer_name));
+      if (idx >= 0) {
+        const after = result.slice(idx);
+        const dateMatch = after.match(/(Date[^_<]*?)(_{3,})/i);
+        if (dateMatch) {
+          const replaced = after.replace(/(Date[^_<]*?)(_{3,})/i, `$1${makeDateBlock(doulaSig.signed_at)}`);
+          result = result.slice(0, idx) + replaced;
+        }
+      }
+    }
+  }
+
+  // Client signature — match "Client Signature" or first plain "Signature" line that isn't doula
+  if (clientSig) {
+    const clientSigRegex = /(Client[A-Za-z\s'\u2019]*Signature[^_<]*?)(_{3,})/i;
+    let placed = false;
+    if (clientSigRegex.test(result)) {
+      result = result.replace(clientSigRegex, `$1${makeSigBlock(clientSig.signer_name)}`);
+      placed = true;
+    } else {
+      // Fallback: first remaining "Signature" line that isn't preceded by "Doula"
+      const genericSig = /((?<!Doula[\s'\u2019]*)(?:^|[^a-zA-Z])Signature[^_<]*?)(_{3,})/i;
+      if (genericSig.test(result)) {
+        result = result.replace(genericSig, `$1${makeSigBlock(clientSig.signer_name)}`);
+        placed = true;
+      }
+    }
+    if (placed) {
+      const idx = result.indexOf(makeSigBlock(clientSig.signer_name));
+      if (idx >= 0) {
+        const after = result.slice(idx);
+        const dateMatch = after.match(/(Date[^_<]*?)(_{3,})/i);
+        if (dateMatch) {
+          const replaced = after.replace(/(Date[^_<]*?)(_{3,})/i, `$1${makeDateBlock(clientSig.signed_at)}`);
+          result = result.slice(0, idx) + replaced;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 function ReadOnlyDocument({
   htmlContent,
   formData,
-  signerName,
-  signedAt,
+  signatures,
 }: {
   htmlContent: string;
   documentType: string;
   formData: Record<string, string>;
-  signerName?: string;
-  signedAt?: string;
+  signatures: SignatureRecord[];
 }) {
   // Fill answers inline for all document types
   const hasFormData = Object.keys(formData).length > 0;
   const filledHtml = hasFormData ? fillHtmlInline(htmlContent, formData) : htmlContent;
 
-  // If there's a signature, append it at the bottom within the document flow
-  let finalHtml = filledHtml;
-  if (signerName) {
-    const signDate = signedAt
-      ? new Date(signedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-      : '';
-    // Replace signature underscores if they exist, otherwise append
-    const sigBlock = `<span style="border-bottom:1px solid #6B3A5E;padding:0 4px;font-family:Georgia,serif;font-style:italic;font-size:1.1em;color:#6B3A5E">${signerName}</span>`;
-    const dateBlock = signDate
-      ? `<span style="border-bottom:1px solid #6B3A5E;padding:0 4px;color:#6B3A5E">${signDate}</span>`
-      : '';
-
-    // Try replacing signature/date placeholder underscores at the end of the document
-    if (/Signature.*_{3,}/i.test(finalHtml)) {
-      finalHtml = finalHtml.replace(
-        /(Signature[^_]*?)_{3,}/i,
-        `$1${sigBlock}`
-      );
-    }
-    if (dateBlock && /Date.*_{3,}/i.test(finalHtml)) {
-      finalHtml = finalHtml.replace(
-        /(Date[^_]*?)_{3,}/i,
-        `$1${dateBlock}`
-      );
-    }
-  }
+  const finalHtml = signatures.length > 0 ? placeSignatures(filledHtml, signatures) : filledHtml;
 
   return (
     <div
@@ -161,15 +214,23 @@ export function DocumentViewerDialog({
   onOpenChange,
   clientId,
   documentId,
-  signerName,
-  signedAt,
   ipAddress,
 }: DocumentViewerProps) {
   const { data: document, isLoading: docLoading } = useDocument(documentId);
   const { data: intakeResponse, isLoading: responseLoading } = useIntakeResponse(clientId, documentId);
+  const { data: allSignatures } = useClientSignatures(clientId);
   const printRef = useRef<HTMLDivElement>(null);
 
   const isLoading = docLoading || responseLoading;
+
+  // All signatures for this specific document (client + doula)
+  const docSignatures: SignatureRecord[] = (allSignatures ?? [])
+    .filter((s) => s.document_id === documentId)
+    .map((s) => ({
+      signer_name: s.signer_name,
+      signer_role: (s.signer_role ?? 'client') as 'client' | 'doula',
+      signed_at: s.signed_at,
+    }));
 
   const handlePrint = () => {
     if (!printRef.current) return;
@@ -230,27 +291,31 @@ export function DocumentViewerDialog({
               htmlContent={document.html_content}
               documentType={document.document_type}
               formData={formData}
-              signerName={signerName}
-              signedAt={signedAt}
+              signatures={docSignatures}
             />
 
             {/* Signature verification details */}
-            <div className="border-t-2 border-[#E8D8E0] mt-8 pt-4">
-              <div className="flex items-center gap-2 mb-2">
-                <PenTool size={14} className="text-[#B5648A]" />
-                <span className="text-xs font-semibold text-[#8B7080] uppercase tracking-wider">Signature Verification</span>
+            {docSignatures.length > 0 && (
+              <div className="border-t-2 border-[#E8D8E0] mt-8 pt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <PenTool size={14} className="text-[#B5648A]" />
+                  <span className="text-xs font-semibold text-[#8B7080] uppercase tracking-wider">Signature Verification</span>
+                </div>
+                {docSignatures.map((s, i) => (
+                  <p key={i} className="text-xs text-[#8B7080]">
+                    Signed by <strong className="text-[#5C4A42]">{s.signer_name}</strong>
+                    {s.signer_role === 'doula' ? ' (doula)' : ''} on{' '}
+                    {new Date(s.signed_at).toLocaleDateString('en-US', {
+                      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+                      hour: 'numeric', minute: '2-digit',
+                    })}
+                  </p>
+                ))}
+                {ipAddress && (
+                  <p className="text-xs text-[#C0A8B4] mt-0.5">IP: {ipAddress}</p>
+                )}
               </div>
-              <p className="text-xs text-[#8B7080]">
-                Signed by <strong className="text-[#5C4A42]">{signerName}</strong> on{' '}
-                {new Date(signedAt).toLocaleDateString('en-US', {
-                  weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-                  hour: 'numeric', minute: '2-digit',
-                })}
-              </p>
-              {ipAddress && (
-                <p className="text-xs text-[#C0A8B4] mt-0.5">IP: {ipAddress}</p>
-              )}
-            </div>
+            )}
           </div>
         ) : (
           <p className="text-sm text-[#8B7080] py-8 text-center">Document not found</p>

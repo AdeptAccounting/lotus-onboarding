@@ -1799,31 +1799,42 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Signed Documents */}
+              {/* Signed Documents — grouped by document_id so each doc appears once */}
               {signatures && signatures.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold text-[#8B7080] uppercase tracking-wider mb-2">Signed</p>
                   <div className="space-y-2">
-                    {signatures.map((sig) => (
-                      <div key={sig.id} className="flex items-center justify-between p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                            <CheckCircle2 size={14} className="text-green-600" />
+                    {Array.from(
+                      signatures.reduce((map, sig) => {
+                        if (!map.has(sig.document_id)) map.set(sig.document_id, []);
+                        map.get(sig.document_id)!.push(sig);
+                        return map;
+                      }, new Map<string, typeof signatures>())
+                    ).map(([docId, docSigs]) => {
+                      const firstSig = docSigs[0];
+                      return (
+                        <div key={docId} className="flex items-center justify-between p-3 rounded-xl bg-[#FDF8F5] border border-[#E8D8E0]/50">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                              <CheckCircle2 size={14} className="text-green-600" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-[#5C4A42] truncate">{firstSig.document?.name}</p>
+                              <p className="text-xs text-[#8B7080] truncate">
+                                {docSigs.map((s) => `${s.signer_name}${s.signer_role === 'doula' ? ' (doula)' : ''}`).join(' · ')}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-[#5C4A42] truncate">{sig.document?.name}</p>
-                            <p className="text-xs text-[#8B7080]">Signed by {sig.signer_name} &middot; {new Date(sig.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                          </div>
+                          <button
+                            onClick={() => setViewerDoc({ open: true, documentId: docId, signerName: firstSig.signer_name, signedAt: firstSig.signed_at, ipAddress: firstSig.ip_address })}
+                            className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors flex-shrink-0"
+                            title="View document"
+                          >
+                            <Eye size={14} />
+                          </button>
                         </div>
-                        <button
-                          onClick={() => setViewerDoc({ open: true, documentId: sig.document_id, signerName: sig.signer_name, signedAt: sig.signed_at, ipAddress: sig.ip_address })}
-                          className="p-2 rounded-lg text-[#8B7080] hover:bg-[#F5EDF1] hover:text-[#6B3A5E] transition-colors flex-shrink-0"
-                          title="View document"
-                        >
-                          <Eye size={14} />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
