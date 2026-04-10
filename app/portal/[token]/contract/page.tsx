@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { SERVICE_TYPE_LABELS } from '@/types';
 import { toast } from 'sonner';
-import { PenTool, Sparkles, AlertCircle, Check } from 'lucide-react';
+import { PenTool, Sparkles, AlertCircle, Check, FlaskConical } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import FillableDocument, {
@@ -18,6 +18,7 @@ import FillableDocument, {
   parseParagraph,
   propagateDoulaStatus,
 } from '@/components/portal/fillable-document';
+import { generateAllTestData } from '@/lib/test-data';
 
 export default function ContractPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
@@ -134,11 +135,31 @@ export default function ContractPage({ params }: { params: Promise<{ token: stri
     }
   };
 
+  // ── Test data fill (remove when done testing) ──
+  const handleFillTestData = () => {
+    if (!contract) return;
+    const test = generateAllTestData([contract]);
+    setFormData(test.formData[contract.id] ?? {});
+    setSignerName(test.signatures[contract.id] ?? 'Jane Doe Test');
+    setAgreed(true);
+    toast.success('Test data filled');
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-      <h1 className="text-xl font-semibold text-[#6B3A5E] mb-2">
-        {client.service_type ? SERVICE_TYPE_LABELS[client.service_type] : ''} Contract
-      </h1>
+      <div className="flex items-start justify-between mb-2 gap-4">
+        <h1 className="text-xl font-semibold text-[#6B3A5E]">
+          {client.service_type ? SERVICE_TYPE_LABELS[client.service_type] : ''} Contract
+        </h1>
+        {/* Remove this button when done testing */}
+        <button
+          onClick={handleFillTestData}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#B5648A]/10 text-[#B5648A] border border-[#B5648A]/20 hover:bg-[#B5648A]/20 transition-colors shrink-0"
+        >
+          <FlaskConical size={13} />
+          Fill Test Data
+        </button>
+      </div>
       <p className="text-sm text-[#8B7080] mb-6">
         Please review your service contract carefully, fill in any blank fields, and sign below to proceed.
       </p>
