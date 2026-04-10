@@ -2120,7 +2120,25 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
             const portalVisits = (activity ?? []).filter((e) => e.action === 'portal_visit');
             const lastVisit = portalVisits[0];
             const recentVisits = portalVisits.slice(0, 5);
-            const totalSigs = signatures?.length ?? 0;
+
+            // Dedupe signatures by document_id so a doc signed by both the
+            // client and the doula only shows once. Prefer the client signature
+            // when both exist; fall back to whichever came first.
+            const uniqueSignedDocs = (() => {
+              const sigList = signatures ?? [];
+              type Sig = (typeof sigList)[number];
+              const byDoc = new Map<string, Sig>();
+              for (const sig of sigList) {
+                const existing = byDoc.get(sig.document_id);
+                if (!existing) {
+                  byDoc.set(sig.document_id, sig);
+                } else if (existing.signer_role !== 'client' && sig.signer_role === 'client') {
+                  byDoc.set(sig.document_id, sig);
+                }
+              }
+              return Array.from(byDoc.values());
+            })();
+            const totalSigs = uniqueSignedDocs.length;
 
             const formatVisitDate = (iso: string) =>
               new Date(iso).toLocaleDateString('en-US', {
@@ -2184,8 +2202,8 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                       <p className="text-xs text-[#C0A8B4] italic">No documents signed yet</p>
                     ) : (
                       <div className="space-y-1.5">
-                        {signatures!.map((sig) => (
-                          <div key={sig.id} className="flex items-center gap-2 text-xs">
+                        {uniqueSignedDocs.map((sig) => (
+                          <div key={sig.document_id} className="flex items-center gap-2 text-xs">
                             <CheckCircle2 size={13} className="text-green-500 flex-shrink-0" />
                             <div className="min-w-0">
                               <p className="text-[#5C4A42] truncate">{sig.document?.name}</p>
