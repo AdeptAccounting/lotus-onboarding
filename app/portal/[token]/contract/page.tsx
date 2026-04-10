@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState, useMemo } from 'react';
-import { usePortalClient, usePortalDocuments } from '@/hooks/usePortal';
+import { usePortalClient, usePortalDocuments, usePortalSignatures } from '@/hooks/usePortal';
 import { createClient } from '@/lib/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ export default function ContractPage({ params }: { params: Promise<{ token: stri
   const router = useRouter();
   const { data: client } = usePortalClient(token);
   const { data: documents, isLoading } = usePortalDocuments(token, 'contract');
+  const { data: portalSignatures } = usePortalSignatures(token);
   const queryClient = useQueryClient();
   const supabase = createClient();
 
@@ -34,6 +35,17 @@ export default function ContractPage({ params }: { params: Promise<{ token: stri
   const [formData, setFormData] = useState<Record<string, string>>({});
 
   const contract = documents?.[0];
+
+  // Doula's pre-signature on this contract (Femeika signed before sending).
+  // When present, the contract renders her name on the doula signature/date
+  // lines instead of the "To be completed by doula" placeholder.
+  const doulaSignature = useMemo(() => {
+    if (!contract) return null;
+    const sig = (portalSignatures ?? []).find(
+      (s) => s.document_id === contract.id && s.signer_role === 'doula'
+    );
+    return sig ? { signer_name: sig.signer_name, signed_at: sig.signed_at } : null;
+  }, [portalSignatures, contract]);
 
   // Compute the set of doula-only field keys so we can exclude them from the
   // "all client fields filled" gate. Must be declared unconditionally to obey
@@ -185,6 +197,7 @@ export default function ContractPage({ params }: { params: Promise<{ token: stri
               document_type={contract.document_type}
               formData={formData}
               onChange={setFormData}
+              doulaSignature={doulaSignature}
             />
           </div>
 

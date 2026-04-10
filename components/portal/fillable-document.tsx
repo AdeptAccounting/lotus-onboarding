@@ -7,6 +7,31 @@ interface FillableDocumentProps {
   document_type: string;
   formData: Record<string, string>;
   onChange: (data: Record<string, string>) => void;
+  /**
+   * Optional pre-existing doula signature. When provided, doula fields render
+   * the signer's name (or signed date) inline instead of the disabled
+   * "To be completed by doula" placeholder. Used on the contract page so the
+   * client sees Femeika's signature already on the doc when she pre-signed
+   * before sending.
+   */
+  doulaSignature?: { signer_name: string; signed_at: string } | null;
+}
+
+// Decide what to render in a doula field when a doula signature exists.
+// Date-shaped labels show the formatted signed_at; everything else (Name,
+// Signature, Initials) shows the signer name in italic.
+function doulaFieldDisplay(
+  label: string,
+  sig: { signer_name: string; signed_at: string }
+): string {
+  if (/\bdate\b/i.test(label)) {
+    return new Date(sig.signed_at).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+  return sig.signer_name;
 }
 
 // Slugify a label string to use as a form field key
@@ -185,6 +210,7 @@ export default function FillableDocument({
   html_content,
   formData,
   onChange,
+  doulaSignature,
 }: FillableDocumentProps) {
   const uid = useId();
 
@@ -343,11 +369,21 @@ export default function FillableDocument({
                   return (
                     <span key={sIdx} className="inline-flex items-baseline">
                       {field.isDoula ? (
-                        <span
-                          className="inline-block min-w-[120px] border-b border-[#E8D8E0] text-xs text-[#C0A8B4] italic px-1 py-0.5 mx-1"
-                        >
-                          To be completed by doula
-                        </span>
+                        doulaSignature ? (
+                          <span
+                            className="inline-block min-w-[140px] border-b border-[#B5648A]/40 text-base text-[#6B3A5E] italic px-1 py-0.5 mx-1"
+                            style={{ fontFamily: 'Georgia, serif' }}
+                            title={`Signed by ${doulaSignature.signer_name}`}
+                          >
+                            {doulaFieldDisplay(field.label, doulaSignature)}
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-block min-w-[120px] border-b border-[#E8D8E0] text-xs text-[#C0A8B4] italic px-1 py-0.5 mx-1"
+                          >
+                            To be completed by doula
+                          </span>
+                        )
                       ) : (
                         <input
                           value={formData[field.key] || ''}
