@@ -21,6 +21,8 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
   const [hasPaymentLink, setHasPaymentLink] = useState(false);
 
   const isVerifyPage = pathname === `/portal/${token}/verify`;
+  const isMessagesPage = pathname === `/portal/${token}/messages`;
+  const containerMaxWidth = isMessagesPage ? 'max-w-5xl' : 'max-w-3xl';
 
   useEffect(() => {
     if (isVerifyPage) {
@@ -101,7 +103,7 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#FDF8F5] via-white to-[#F5EDF1]">
       {/* Header */}
       <header className="border-b border-[#E8D8E0]/50 bg-white/80 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className={`${containerMaxWidth} mx-auto px-6 py-4 flex items-center justify-between`}>
           <div className="flex items-center gap-3">
             <Image src="/logo.png" alt="The Lotus Program Experience" width={48} height={48} />
             <div>
@@ -122,7 +124,7 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
 
         {/* Nav tabs — visible for all clients */}
         {clientStatus && (
-          <div className="max-w-3xl mx-auto px-6">
+          <div className={`${containerMaxWidth} mx-auto px-6`}>
             <nav className="flex gap-1 -mb-px">
               {[
                 { href: `/portal/${token}`, label: 'Home', icon: Home },
@@ -152,13 +154,13 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
       </header>
 
       {/* Content */}
-      <main className="max-w-3xl mx-auto px-6 py-8 flex-1">
+      <main className={`${containerMaxWidth} mx-auto px-6 py-8 flex-1`}>
         {children}
       </main>
 
       {/* Footer */}
       <footer className="border-t border-[#E8D8E0]/50 bg-white/50 mt-auto">
-        <div className="max-w-3xl mx-auto px-6 py-4 text-center">
+        <div className={`${containerMaxWidth} mx-auto px-6 py-4 text-center`}>
           <p className="text-xs text-[#8B7080]">
             &copy; {new Date().getFullYear()} The Lotus Program Experience. All rights reserved.
           </p>
