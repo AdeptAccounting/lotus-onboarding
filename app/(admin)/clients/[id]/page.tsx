@@ -19,6 +19,7 @@ import {
   useUploadedDocuments,
   useToggleDocumentVisibility,
   useMarkMessagesRead,
+  useAvailableContractServiceTypes,
 } from '@/hooks/useClients';
 import { createClient as createSupabaseClient } from '@/lib/supabase/client';
 import { PipelineStepper } from '@/components/admin/pipeline-stepper';
@@ -1105,6 +1106,7 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
   const markRead = useMarkMessagesRead(clientId);
   const { data: uploadedDocs } = useUploadedDocuments(clientId);
   const toggleVisibility = useToggleDocumentVisibility();
+  const { data: availableContractTypes } = useAvailableContractServiceTypes();
 
   const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -1450,32 +1452,47 @@ function PipelineClientView({ client, clientId }: { client: NonNullable<ReturnTy
                 <p className="text-sm text-[#8B7080] mb-4">
                   Choose the service type and set the payment amount, then send the contract.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                  {(['birth_doula', 'postpartum_doula', 'death_doula'] as ServiceType[]).map(
-                    (type) => (
-                      <button
-                        key={type}
-                        onClick={() => setSelectedService(type)}
-                        className={`p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2 ${
-                          selectedService === type
-                            ? 'border-[#B5648A] bg-[#B5648A]/5 shadow-md'
-                            : 'border-[#E8D8E0] hover:border-[#D4A0BB] bg-white'
-                        }`}
-                      >
-                        <div
-                          className={`${selectedService === type ? 'text-[#B5648A]' : 'text-[#8B7080]'}`}
-                        >
-                          {SERVICE_ICONS[type]}
-                        </div>
-                        <span
-                          className={`text-xs font-medium ${
-                            selectedService === type ? 'text-[#6B3A5E]' : 'text-[#8B7080]'
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                  {(['full_spectrum_doula', 'birth_doula', 'postpartum_doula', 'death_doula'] as ServiceType[]).map(
+                    (type) => {
+                      const available = availableContractTypes?.has(type) ?? false;
+                      const isSelected = selectedService === type;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          disabled={!available}
+                          onClick={() => available && setSelectedService(type)}
+                          className={`p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2 ${
+                            !available
+                              ? 'border-[#E8D8E0] bg-[#F5EDF1]/40 opacity-60 cursor-not-allowed'
+                              : isSelected
+                              ? 'border-[#B5648A] bg-[#B5648A]/5 shadow-md'
+                              : 'border-[#E8D8E0] hover:border-[#D4A0BB] bg-white'
                           }`}
                         >
-                          {SERVICE_TYPE_LABELS[type]}
-                        </span>
-                      </button>
-                    )
+                          <div
+                            className={`${
+                              !available ? 'text-[#B89BAC]' : isSelected ? 'text-[#B5648A]' : 'text-[#8B7080]'
+                            }`}
+                          >
+                            {SERVICE_ICONS[type]}
+                          </div>
+                          <span
+                            className={`text-xs font-medium text-center ${
+                              !available ? 'text-[#8B7080]' : isSelected ? 'text-[#6B3A5E]' : 'text-[#8B7080]'
+                            }`}
+                          >
+                            {SERVICE_TYPE_LABELS[type]}
+                          </span>
+                          {!available && (
+                            <span className="text-[10px] uppercase tracking-wide text-[#B89BAC]">
+                              Coming soon
+                            </span>
+                          )}
+                        </button>
+                      );
+                    }
                   )}
                 </div>
                 <div className="space-y-1.5 mb-4">
