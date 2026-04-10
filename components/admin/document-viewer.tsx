@@ -191,11 +191,13 @@ function ReadOnlyDocument({
   formData: Record<string, string>;
   signatures: SignatureRecord[];
 }) {
-  // Fill answers inline for all document types
-  const hasFormData = Object.keys(formData).length > 0;
-  const filledHtml = hasFormData ? fillHtmlInline(htmlContent, formData) : htmlContent;
+  // Place signatures FIRST while raw underscores still exist on the signature lines.
+  // fillHtmlInline would otherwise replace those underscores with "Not provided" spans.
+  const withSigs = signatures.length > 0 ? placeSignatures(htmlContent, signatures) : htmlContent;
 
-  const finalHtml = signatures.length > 0 ? placeSignatures(filledHtml, signatures) : filledHtml;
+  // Then fill the rest of the form data inline
+  const hasFormData = Object.keys(formData).length > 0;
+  const finalHtml = hasFormData ? fillHtmlInline(withSigs, formData) : withSigs;
 
   return (
     <div
