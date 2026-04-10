@@ -137,6 +137,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
           .insert(intakeInserts);
         if (intakeError) {
           console.error('Intake response error:', intakeError);
+          throw intakeError;
         }
       }
 
