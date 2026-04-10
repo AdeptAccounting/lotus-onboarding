@@ -245,8 +245,8 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
   const [previewDoc, setPreviewDoc] = useState<{ open: boolean; url: string; name: string }>({ open: false, url: '', name: '' });
 
   // Messages tab state
-  const [messageOpen, setMessageOpen] = useState(false);
   const [messageText, setMessageText] = useState('');
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
   const [notifyDialog, setNotifyDialog] = useState<{
     open: boolean;
     updateType: 'message' | 'document' | 'payment_link';
@@ -267,10 +267,19 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
     ipAddress?: string | null;
   }>({ open: false, documentId: '', signerName: '', signedAt: '' });
 
-  if (!client) return null;
-
   const notes = activity?.filter((e) => e.action === 'note_added') ?? [];
-  const messages = activity?.filter((e) => e.action === 'message_sent') ?? [];
+  const messages = [...(activity?.filter((e) => e.action === 'message_sent') ?? [])].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  // Auto-scroll messages to bottom when new messages arrive or tab becomes active
+  useEffect(() => {
+    if (activeTab === 'messages' && messagesScrollRef.current) {
+      messagesScrollRef.current.scrollTop = messagesScrollRef.current.scrollHeight;
+    }
+  }, [activeTab, messages.length]);
+
+  if (!client) return null;
 
   // Personal info handlers
   const startPersonalEdit = () => {
@@ -358,7 +367,6 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
       await addMessage.mutateAsync(messageText.trim());
       toast.success('Message sent');
       setMessageText('');
-      setMessageOpen(false);
     } catch {
       toast.error('Failed to send message');
     }
@@ -922,94 +930,91 @@ function ActiveClientProfile({ clientId }: { clientId: string }) {
 
       {/* ── MESSAGES TAB ── */}
       {activeTab === 'messages' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#8B7080] bg-blue-50/50 border border-blue-100 rounded-xl">
             <Send size={13} className="text-blue-500 flex-shrink-0" />
             Messages are visible to the client in their portal
           </div>
 
-          {/* Add Message */}
-          <div className="bg-white rounded-2xl border border-[#E8D8E0]/50 shadow-sm p-5">
-            {!messageOpen ? (
-              <button
-                onClick={() => setMessageOpen(true)}
-                className="flex items-center gap-2 text-sm text-[#8B7080] hover:text-[#6B3A5E] transition-colors"
-              >
-                <Plus size={16} className="text-[#B5648A]" />
-                Write a message
-              </button>
-            ) : (
-              <div className="space-y-3">
-                <textarea
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  placeholder="Write a message to the client... (they will see this in their portal)"
-                  rows={4}
-                  className="w-full rounded-xl border border-[#E8D8E0] bg-[#FDF8F5] px-3 py-2.5 text-sm text-[#5C4A42] placeholder:text-[#C0A8B4] focus:outline-none focus:border-[#B5648A] resize-none"
-                />
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => { setMessageOpen(false); setMessageText(''); }}
-                    className="rounded-xl border-[#E8D8E0] text-[#8B7080] text-xs h-8"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleAddMessage}
-                    disabled={!messageText.trim() || addMessage.isPending}
-                    className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white text-xs h-8 gap-1"
-                  >
-                    <Send size={12} />
-                    {addMessage.isPending ? 'Sending...' : 'Send Message'}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Messages List */}
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-[#E8D8E0]/50">
-              <div className="w-14 h-14 rounded-full bg-[#F5EDF1] flex items-center justify-center mb-3">
-                <Send size={20} className="text-[#B5648A]" />
-              </div>
-              <p className="text-[#6B3A5E] font-medium text-sm">No messages yet</p>
-              <p className="text-xs text-[#8B7080] mt-1">Send a message to the client</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className="bg-white rounded-2xl border border-[#E8D8E0]/50 shadow-sm p-5"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <p className="text-sm text-[#5C4A42] leading-relaxed whitespace-pre-wrap">
-                        {(msg.details as { message?: string })?.message ?? ''}
-                      </p>
-                      <p className="text-xs text-[#8B7080] mt-2">
-                        {new Date(msg.created_at).toLocaleDateString('en-US', {
-                          month: 'short', day: 'numeric', year: 'numeric',
-                          hour: 'numeric', minute: '2-digit',
-                        })}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteMessage(msg.id)}
-                      className="p-1.5 rounded-lg text-[#C0A8B4] hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
-                      title="Delete message"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+          <div className="bg-white rounded-2xl border border-[#E8D8E0]/50 shadow-sm flex flex-col h-[calc(100vh-280px)] min-h-[400px] overflow-hidden">
+            {/* Conversation Thread */}
+            <div
+              ref={messagesScrollRef}
+              className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth px-4 py-4 space-y-2"
+            >
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center">
+                  <div className="w-14 h-14 rounded-full bg-[#F5EDF1] flex items-center justify-center mb-3">
+                    <Send size={20} className="text-[#B5648A]" />
                   </div>
+                  <p className="text-[#6B3A5E] font-medium text-sm">No messages yet</p>
+                  <p className="text-xs text-[#8B7080] mt-1">Send a message to the client</p>
                 </div>
-              ))}
+              ) : (
+                messages.map((msg) => {
+                  const isFromClient = msg.actor === 'client';
+                  return (
+                    <div key={msg.id} className={`flex ${isFromClient ? 'justify-start' : 'justify-end'}`}>
+                      <div className="max-w-[85%] group relative break-words">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          {isFromClient && (
+                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#D4A0BB] to-[#B5648A] flex items-center justify-center">
+                              <span className="text-white text-[8px] font-semibold">{client.first_name[0]}{client.last_name[0]}</span>
+                            </div>
+                          )}
+                          <span className="text-[10px] text-[#8B7080]">
+                            {isFromClient ? `${client.first_name}` : 'You'} &middot; {new Date(msg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                          isFromClient
+                            ? 'bg-[#F5EDF1] text-[#5C4A42] rounded-bl-md'
+                            : 'bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white rounded-br-md'
+                        }`}>
+                          <p className="whitespace-pre-wrap">{(msg.details as { message?: string })?.message ?? ''}</p>
+                        </div>
+                        {!isFromClient && (
+                          <button
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            className="absolute -left-6 top-4 p-1 rounded-lg text-[#C0A8B4] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete message"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
-          )}
+
+            {/* Reply Input — pinned at bottom */}
+            <div className="border-t border-[#E8D8E0]/50 bg-[#FDF8F5]/50 px-3 py-3 flex gap-2 items-end">
+              <textarea
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!messageText.trim() || addMessage.isPending) return;
+                    handleAddMessage();
+                  }
+                }}
+                placeholder="Type a message..."
+                rows={1}
+                className="flex-1 rounded-2xl border border-[#E8D8E0] bg-white px-4 py-2.5 text-sm text-[#5C4A42] placeholder:text-[#C0A8B4] focus:outline-none focus:border-[#B5648A] resize-none max-h-32"
+              />
+              <Button
+                size="sm"
+                onClick={handleAddMessage}
+                disabled={!messageText.trim() || addMessage.isPending}
+                className="rounded-full bg-gradient-to-r from-[#B5648A] to-[#9B4D73] text-white h-10 w-10 p-0 flex-shrink-0"
+              >
+                <Send size={16} />
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
