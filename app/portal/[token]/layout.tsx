@@ -49,16 +49,20 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
           }
         });
 
-      // Log a portal_visit if we haven't logged one in the last 30 minutes
+      // Log a portal_visit if we haven't logged one in the last 5 minutes.
+      // localStorage so the throttle persists across tabs/refreshes within
+      // the same browser, not just one tab session.
       const lastVisitKey = `portal_last_visit_${token}`;
-      const lastVisit = sessionStorage.getItem(lastVisitKey);
+      const lastVisit = localStorage.getItem(lastVisitKey);
       const now = Date.now();
-      const thirtyMinutes = 30 * 60 * 1000;
+      const throttleMs = 5 * 60 * 1000;
 
-      if (!lastVisit || now - parseInt(lastVisit, 10) > thirtyMinutes) {
-        sessionStorage.setItem(lastVisitKey, String(now));
+      if (!lastVisit || now - parseInt(lastVisit, 10) > throttleMs) {
+        localStorage.setItem(lastVisitKey, String(now));
 
-        // Fire-and-forget: fetch client by token, then log the visit
+        // Fetch client by token, then log the visit. IMPORTANT: chain the
+        // insert with .then() so the request actually fires — the supabase-js
+        // PostgrestBuilder is lazy and won't send the request otherwise.
         const supabase = createClient();
         supabase
           .from('onboarding_clients')
@@ -66,8 +70,10 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
           .eq('access_token', token)
           .single()
           .then(({ data: client }) => {
-            if (client) {
-              supabase.from('onboarding_activity_log').insert({
+            if (!client) return;
+            supabase
+              .from('onboarding_activity_log')
+              .insert({
                 client_id: client.id,
                 action: 'portal_visit',
                 details: {
@@ -75,8 +81,10 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
                   user_agent: navigator.userAgent,
                 },
                 actor: 'client',
+              })
+              .then(({ error }) => {
+                if (error) console.error('Failed to log portal visit:', error);
               });
-            }
           });
       }
     }
