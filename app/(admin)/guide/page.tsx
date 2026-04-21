@@ -66,8 +66,15 @@ const SECTIONS = [
           <li className="flex gap-3">
             <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#B5648A] text-white text-xs font-semibold flex items-center justify-center">2</span>
             <div>
+              <p className="font-medium text-[#5C4A42] text-sm">Client completes the Pre-Service Survey</p>
+              <p className="text-xs text-[#8B7080]">Before anything else, the client is asked to fill out your Pre-Service Survey from their portal. Packet 1 stays locked until they submit it. Their status on the client page shows <strong className="text-[#6B3A5E]">Survey: Awaiting</strong> until then, and flips to <strong className="text-[#6B3A5E]">Survey: Submitted</strong> within seconds of submission.</p>
+            </div>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#B5648A] text-white text-xs font-semibold flex items-center justify-center">3</span>
+            <div>
               <p className="font-medium text-[#5C4A42] text-sm">Client fills out and signs their intake documents</p>
-              <p className="text-xs text-[#8B7080]">They open the link from the email, verify their email, then fill out the intake form and sign all documents. You get a notification email when they submit.</p>
+              <p className="text-xs text-[#8B7080]">Once the survey is submitted, Packet 1 unlocks in their portal. They fill out the intake form and sign all documents. You get a notification email when they submit.</p>
               <div className="mt-2 flex gap-2 p-2.5 rounded-xl bg-[#F5EDF1] border border-[#E8D8E0]/60">
                 <Eye size={13} className="text-[#B5648A] flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-[#8B7080]">
@@ -84,28 +91,28 @@ const SECTIONS = [
             </div>
           </li>
           <li className="flex gap-3">
-            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#B5648A] text-white text-xs font-semibold flex items-center justify-center">3</span>
+            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#B5648A] text-white text-xs font-semibold flex items-center justify-center">4</span>
             <div>
               <p className="font-medium text-[#5C4A42] text-sm">You review and approve their documents</p>
               <p className="text-xs text-[#8B7080]">Click on the client in your Dashboard, review their signed documents, and click &quot;Approve Packet 1&quot;.</p>
             </div>
           </li>
           <li className="flex gap-3">
-            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#B5648A] text-white text-xs font-semibold flex items-center justify-center">4</span>
+            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#B5648A] text-white text-xs font-semibold flex items-center justify-center">5</span>
             <div>
               <p className="font-medium text-[#5C4A42] text-sm">Select the service type and send the contract</p>
               <p className="text-xs text-[#8B7080]">Choose Full Spectrum Doula or Death Doula. Enter the payment amount. Click &quot;Send Contract&quot;. The client gets an email with a link to sign their contract.</p>
             </div>
           </li>
           <li className="flex gap-3">
-            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#B5648A] text-white text-xs font-semibold flex items-center justify-center">5</span>
+            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#B5648A] text-white text-xs font-semibold flex items-center justify-center">6</span>
             <div>
               <p className="font-medium text-[#5C4A42] text-sm">Client signs the contract</p>
               <p className="text-xs text-[#8B7080]">They open their portal, review the contract for their service, and sign it electronically.</p>
             </div>
           </li>
           <li className="flex gap-3">
-            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#B5648A] text-white text-xs font-semibold flex items-center justify-center">6</span>
+            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#B5648A] text-white text-xs font-semibold flex items-center justify-center">7</span>
             <div>
               <p className="font-medium text-[#5C4A42] text-sm">Send a Square invoice and confirm payment</p>
               <p className="text-xs text-[#8B7080]">Send them a Square invoice from your Square app for the agreed amount. When they pay, the system will try to detect it automatically. You can also click &quot;Confirm Payment&quot; on the client&apos;s page to confirm manually.</p>

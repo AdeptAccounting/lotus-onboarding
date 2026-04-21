@@ -8,7 +8,7 @@ function getSupabase() {
   return createClient();
 }
 
-export function usePortalClient(token: string) {
+export function usePortalClient(token: string, options?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: ['portal', token],
     queryFn: async () => {
@@ -21,6 +21,7 @@ export function usePortalClient(token: string) {
       return data as OnboardingClient;
     },
     enabled: !!token,
+    refetchInterval: options?.refetchInterval,
   });
 }
 

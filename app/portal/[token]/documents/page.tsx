@@ -65,6 +65,14 @@ export default function DocumentsPage({ params }: { params: Promise<{ token: str
     );
   }
 
+  // Pre-Service Survey gate: Packet 1 is not accessible until the client
+  // has submitted the survey. Bounce them back to the portal landing, which
+  // renders the survey CTA.
+  if (!client.survey_completed_at) {
+    router.replace(`/portal/${token}`);
+    return null;
+  }
+
   const activeDoc = documents[activeDocIndex];
 
   // Check if a document has fillable fields that need completing (excludes doula fields)

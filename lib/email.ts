@@ -120,7 +120,11 @@ export function welcomeEmailHtml(clientName: string, portalUrl: string): string 
 
       <p style="color: #5C4A42; font-size: 16px; line-height: 1.6;">
         Welcome! We are so honored that you've chosen The Lotus Program Experience for your care journey.
-        To get started, we need you to review and sign a few intake documents.
+      </p>
+
+      <p style="color: #5C4A42; font-size: 16px; line-height: 1.6;">
+        Your first step is a short <strong>Pre-Service Survey</strong> — it takes about 2 minutes.
+        Once you submit it, your Packet 1 intake documents will unlock automatically in your portal.
       </p>
 
       <div style="text-align: center; margin: 30px 0;">
@@ -130,8 +134,8 @@ export function welcomeEmailHtml(clientName: string, portalUrl: string): string 
       </div>
 
       <p style="color: #8B7080; font-size: 14px; line-height: 1.6;">
-        Click the button above to access your personal onboarding portal. You'll be able to review
-        and sign your intake documents at your own pace.
+        Click the button above to access your personal onboarding portal. The survey link
+        is waiting for you inside.
       </p>
 
       <hr style="border: none; border-top: 1px solid #E8D8E0; margin: 30px 0;" />

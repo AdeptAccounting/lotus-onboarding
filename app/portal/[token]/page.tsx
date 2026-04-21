@@ -4,10 +4,17 @@ import { use } from 'react';
 import { usePortalClient } from '@/hooks/usePortal';
 import { PIPELINE_STEPS, STATUS_LABELS } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Check, FileText, PenTool, CreditCard, Sparkles, MessageSquare, Heart } from 'lucide-react';
+import { Check, FileText, PenTool, CreditCard, Sparkles, MessageSquare, Heart, ClipboardList, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
+
+function buildSurveyUrl(email: string): string {
+  const base = process.env.NEXT_PUBLIC_SURVEY_PREFILL_URL
+    || 'https://docs.google.com/forms/d/e/1FAIpQLSfdGDDjzMBHA9KqN7ZTuZffQ-Qxz_dwDWWMd8z6oi98saafvg/viewform';
+  if (base.includes('{{email}}')) return base.replace('{{email}}', encodeURIComponent(email));
+  return base;
+}
 
 const PORTAL_STEPS = [
   { status: 'packet1_sent', label: 'Review & Sign Documents', icon: FileText, href: '/documents' },
@@ -21,7 +28,9 @@ const PORTAL_STEPS = [
 
 export default function PortalWelcomePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
-  const { data: client, isLoading, error } = usePortalClient(token);
+  // Poll every 15s so the survey gate auto-unlocks once Apps Script fires the
+  // webhook without the client needing to refresh.
+  const { data: client, isLoading, error } = usePortalClient(token, { refetchInterval: 15000 });
 
   if (isLoading) {
     return (
@@ -40,6 +49,66 @@ export default function PortalWelcomePage({ params }: { params: Promise<{ token:
         <p className="text-[#6B3A5E] font-medium">Portal not found</p>
         <p className="text-sm text-[#8B7080] mt-1">This link may be invalid or expired.</p>
       </div>
+    );
+  }
+
+  // Pre-Service Survey gate — every new client must submit the survey before
+  // Packet 1 and the rest of the portal unlocks. Determined by the presence of
+  // a survey_completed_at timestamp on the client row, populated by the
+  // /api/webhooks/survey-complete endpoint (fired by Google Apps Script on
+  // form submit).
+  if (!client.survey_completed_at) {
+    const surveyUrl = buildSurveyUrl(client.email);
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-semibold text-[#6B3A5E]">
+            Welcome, {client.first_name}!
+          </h1>
+          <p className="text-[#8B7080] mt-2">
+            Before we begin your onboarding, we&apos;d love to learn a little about you.
+          </p>
+        </div>
+
+        <Card className="rounded-2xl border-[#E8D8E0]/60 shadow-sm bg-gradient-to-br from-white to-[#FDF8F5]">
+          <CardContent className="p-8 flex flex-col items-center text-center gap-5">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#B5648A]/15 to-[#B5648A]/5 flex items-center justify-center">
+              <ClipboardList size={30} className="text-[#B5648A]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-[#6B3A5E]">
+                Complete your Pre-Service Survey
+              </h2>
+              <p className="text-sm text-[#8B7080] mt-2 max-w-sm mx-auto">
+                This takes about 2 minutes. Your Packet 1 documents will unlock
+                as soon as you submit it.
+              </p>
+            </div>
+            <a href={surveyUrl} target="_blank" rel="noopener noreferrer">
+              <Button className="rounded-xl bg-gradient-to-r from-[#B5648A] to-[#9B4D73] hover:from-[#9B4D73] hover:to-[#6B3A5E] text-white px-8 py-6 text-base shadow-lg shadow-[#B5648A]/20 gap-2">
+                <ExternalLink size={18} />
+                Open Pre-Service Survey
+              </Button>
+            </a>
+            <p className="text-xs text-[#C0A8B4]">
+              Opens in a new tab. Your portal will unlock automatically once we receive your submission.
+            </p>
+          </CardContent>
+        </Card>
+
+        <div className="flex items-center gap-3 mt-6 p-4 rounded-xl bg-[#F5EDF1]/60 border border-[#E8D8E0]/40">
+          <Sparkles size={16} className="text-[#B5648A] flex-shrink-0" />
+          <p className="text-xs text-[#8B7080]">
+            Already submitted the survey? It can take up to 15 seconds for your portal to update.
+          </p>
+        </div>
+
+        <p className="text-center text-[10px] text-[#C0A8B4] mt-10 tracking-wide">Powered by Adept Data Automation</p>
+      </motion.div>
     );
   }
 

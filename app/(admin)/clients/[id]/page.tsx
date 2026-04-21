@@ -2368,6 +2368,22 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           >
             {STATUS_LABELS[client.status]}
           </Badge>
+          {!isArchived && (
+            <Badge
+              className={`${
+                client.survey_completed_at
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-800'
+              } rounded-full px-3 py-1 text-sm font-medium border-0`}
+              title={
+                client.survey_completed_at
+                  ? `Submitted ${new Date(client.survey_completed_at).toLocaleString()}`
+                  : 'The client must complete the Pre-Service Survey before Packet 1 unlocks.'
+              }
+            >
+              {client.survey_completed_at ? 'Survey: Submitted' : 'Survey: Awaiting'}
+            </Badge>
+          )}
           {client.service_type && (
             <Badge className="bg-[#F5EDF1] text-[#6B3A5E] rounded-full px-3 py-1 text-sm font-medium border-0">
               {SERVICE_TYPE_LABELS[client.service_type]}
